@@ -1,0 +1,10 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/.vs
+/HexMapEconomy/bin
+/HexMapEconomy/obj
+/HexMapEconomy.Tests/bin
+/HexMapEconomy.Tests/obj
+
