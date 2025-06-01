@@ -7,7 +7,7 @@ namespace HexMapEconomy.Tests;
 public sealed class FactoryManagerTests
 {
     [TestMethod]
-    public void CreateFactory()
+    public void FactoryManagerBasics()
     {
         var factoryManager = new FactoryManager(GenerateFactoryTypes());
         var position = new CubeCoordinates(0, 0, 0);
@@ -17,6 +17,12 @@ public sealed class FactoryManagerTests
         Assert.IsTrue(success, "Factory should be created successfully.");
         success = factoryManager.CreateFactory(position, 99, ownerId);
         Assert.IsFalse(success, "Factory should not be created with an unknown type.");
+        Assert.AreEqual(1, factoryManager.CountFactories(), "Exactly one Factory should be in store.");
+        var factories = factoryManager.GetFactoriesByPosition(position);
+        Assert.AreEqual(1, factories.Count, "There should be one factory at the specified position.");
+        success = factoryManager.RemoveFactory(factories.First().Id);
+        Assert.IsTrue(success, "Factory should be removed successfully.");
+        Assert.AreEqual(0, factoryManager.CountFactories(), "Factory store should be empty after removal.");
     }
 
     private Dictionary<int, Recipe> GenerateFactoryTypes()
