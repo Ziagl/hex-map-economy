@@ -8,6 +8,7 @@ public class AssetManager
 
     public AssetManager()
     {
-        
     }
+
+    public Dictionary<Guid, Asset> AssetStore { get { return _assetStore; } }
 }

@@ -6,7 +6,7 @@ public abstract class EconomyBase
     public int Type { get; init; } // type of the asset, e.g. resource type, product type, etc.
     public int OwnerId { get => _ownerId; } // ID of the owner, e.g. player ID
 
-    private int _ownerId { get; set; } 
+    private int _ownerId { get; set; }
 
     public EconomyBase(int type, int ownerId)
     {

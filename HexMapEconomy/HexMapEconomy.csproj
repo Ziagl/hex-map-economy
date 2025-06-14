@@ -39,8 +39,4 @@
     <PackageReference Include="HexMapBase" Version="0.3.8" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Interfaces\" />
-  </ItemGroup>
-
 </Project>
