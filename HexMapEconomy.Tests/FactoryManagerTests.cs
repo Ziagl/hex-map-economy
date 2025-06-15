@@ -35,15 +35,24 @@ public sealed class FactoryManagerTests
     [TestMethod]
     public void FactoryProcess()
     {
+        // tests a factory that has no input
         var factoryManager = new FactoryManager(GenerateFactoryTypes(), _assetManager);
         var position = new CubeCoordinates(0, 0, 0);
         int type = LUMBERJACK;
-        int ownerId = 123;
+        int ownerId = 1;
         bool success = factoryManager.CreateFactory(position, type, ownerId);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = factoryManager.GetFactoriesByPosition(position).First();
-        factory.Process(); // Process the factory
-        // Check if the output was generated correctly
+        factory.Process();
+        Assert.AreEqual(1, factory.Productivity, "Factory should have produced one output.");
+        // tests a factory that needs input
+        position = new CubeCoordinates(1, 1, 1);
+        type = SAWMILL;
+        success = factoryManager.CreateFactory(position, type, ownerId);
+        Assert.IsTrue(success, "Factory should be created successfully.");
+        factory = factoryManager.GetFactoriesByPosition(position).First();
+        factory.Process();
+        // TODO: add input to the factory, so it can produce output
         Assert.AreEqual(1, factory.Productivity, "Factory should have produced one output.");
     }
 
