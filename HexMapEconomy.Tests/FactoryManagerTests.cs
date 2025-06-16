@@ -61,12 +61,12 @@ public sealed class FactoryManagerTests
         return new Dictionary<int, Recipe>
         {
             { LUMBERJACK, new Recipe(
-                new List<Tuple<int, int>>(), 
-                new List<Tuple<int, int>>(){ new Tuple<int, int>(1, 1) }
+                new List<StockEntry>(), 
+                new List<StockEntry>(){ new StockEntry() { Type = 1, Amount = 1 } }
                 ) },    // lumberjack creates wood (abstract)
             { SAWMILL, new Recipe(
-                new List<Tuple<int, int>>() { new Tuple<int, int>(1, 1) }, 
-                new List<Tuple<int, int>>() { new Tuple<int, int>(2, 1) }
+                new List<StockEntry>() { new StockEntry() { Type = 1, Amount = 1 } }, 
+                new List<StockEntry>() { new StockEntry() { Type = 2, Amount = 1 } }
                 ) },    // sawmill creates a plank from a wood (abstract)
         };
     }
