@@ -24,14 +24,14 @@ public class FactoryManager
     /// <param name="type">Type of created Factory.</param>
     /// <param name="ownerId">The owner of this Factory.</param>
     /// <returns>true if Factory was created successfully, otherwise false.</returns>
-    public bool CreateFactory(CubeCoordinates position, int type, int ownerId)
+    public bool CreateFactory(CubeCoordinates position, int type, int ownerId, int stockLimit = 0)
     {
         // early exit
         if(!_recipeStore.ContainsKey(type))
         {
             return false;   // this factory type is unknown
         }
-        var factory = new Factory(_recipeStore[type], position, type, ownerId, _assetFactory);
+        var factory = new Factory(_recipeStore[type], position, type, ownerId, _assetFactory, stockLimit);
         _factoryStore[factory.Id] = factory;
         return true;
     }

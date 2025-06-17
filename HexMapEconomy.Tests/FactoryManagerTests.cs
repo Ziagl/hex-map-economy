@@ -48,12 +48,21 @@ public sealed class FactoryManagerTests
         // tests a factory that needs input
         position = new CubeCoordinates(1, 1, 1);
         type = SAWMILL;
-        success = factoryManager.CreateFactory(position, type, ownerId);
+        success = factoryManager.CreateFactory(position, type, ownerId, 5);
         Assert.IsTrue(success, "Factory should be created successfully.");
         factory = factoryManager.GetFactoriesByPosition(position).First();
         factory.Process();
-        // TODO: add input to the factory, so it can produce output
-        Assert.AreEqual(1, factory.Productivity, "Factory should have produced one output.");
+        Assert.AreEqual(0, factory.Productivity, "Factory should not produce output without input.");
+        success = factory.AddToStock(new StockEntry() { Type = 1, Amount = 1 }); // add wood to stock
+        Assert.IsTrue(success, "Wood should be added to factory stock.");
+        factory.Process();
+        Assert.AreEqual(0.5f, factory.Productivity, "Factory should have produced one output.");
+    }
+
+    [TestMethod]
+    public void FactoryStock()
+    {
+        // TODO
     }
 
     private Dictionary<int, Recipe> GenerateFactoryTypes()
