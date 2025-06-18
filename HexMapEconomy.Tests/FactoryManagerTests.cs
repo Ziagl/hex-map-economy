@@ -53,7 +53,7 @@ public sealed class FactoryManagerTests
         factory = factoryManager.GetFactoriesByPosition(position).First();
         factory.Process();
         Assert.AreEqual(0, factory.Productivity, "Factory should not produce output without input.");
-        success = factory.AddToStock(new StockEntry() { Type = 1, Amount = 1 }); // add wood to stock
+        success = factory.Stock.Add(new StockEntry() { Type = 1, Amount = 1 }); // add wood to stock
         Assert.IsTrue(success, "Wood should be added to factory stock.");
         factory.Process();
         Assert.AreEqual(0.5f, factory.Productivity, "Factory should have produced one output.");
@@ -70,14 +70,20 @@ public sealed class FactoryManagerTests
         var success = factoryManager.CreateFactory(position, type, ownerId, stockLimit);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = factoryManager.GetFactoriesByPosition(position).First();
-        success = factory.AddToStock(new StockEntry() { Type = 1, Amount = 3 });
+        success = factory.Stock.Add(new StockEntry() { Type = 1, Amount = 3 });
         Assert.IsTrue(success, "Factory should accept wood into stock.");
-        success = factory.AddToStock(new StockEntry() { Type = 1, Amount = 3 });
+        success = factory.Stock.Add(new StockEntry() { Type = 1, Amount = 3 });
         Assert.IsFalse(success, "Factory should not accept more wood than stock limit.");
-        success = factory.AddToStock(new StockEntry() { Type = 2, Amount = 1 });
+        success = factory.Stock.Add(new StockEntry() { Type = 2, Amount = 1 });
         Assert.IsTrue(success, "Factory should accept mixed stock.");
-        success = factory.AddToStock(new StockEntry() { Type = 2, Amount = 2 });
+        success = factory.Stock.Add(new StockEntry() { Type = 2, Amount = 2 });
         Assert.IsFalse(success, "Factory should not accept more stock entires than stock limit.");
+        var entries = factory.Stock.Take(3, 2);
+        Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries that do not exist.");
+        entries = factory.Stock.Take(2, 4);
+        Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries if the requested amount is not available.");
+        entries = factory.Stock.Take(1, 3);
+        Assert.IsTrue(entries.Count == 1 && entries.First().Type == 1 && entries.First().Amount == 3, "Factory should take stock entries that exist and have enough amount.");
     }
 
     private Dictionary<int, Recipe> GenerateFactoryTypes()
