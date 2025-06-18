@@ -62,7 +62,22 @@ public sealed class FactoryManagerTests
     [TestMethod]
     public void FactoryStock()
     {
-        // TODO
+        var factoryManager = new FactoryManager(GenerateFactoryTypes(), _assetManager);
+        var position = new CubeCoordinates(1, 1, 1);
+        var type = SAWMILL;
+        int ownerId = 1;
+        int stockLimit = 5;
+        var success = factoryManager.CreateFactory(position, type, ownerId, stockLimit);
+        Assert.IsTrue(success, "Factory should be created successfully.");
+        var factory = factoryManager.GetFactoriesByPosition(position).First();
+        success = factory.AddToStock(new StockEntry() { Type = 1, Amount = 3 });
+        Assert.IsTrue(success, "Factory should accept wood into stock.");
+        success = factory.AddToStock(new StockEntry() { Type = 1, Amount = 3 });
+        Assert.IsFalse(success, "Factory should not accept more wood than stock limit.");
+        success = factory.AddToStock(new StockEntry() { Type = 2, Amount = 1 });
+        Assert.IsTrue(success, "Factory should accept mixed stock.");
+        success = factory.AddToStock(new StockEntry() { Type = 2, Amount = 2 });
+        Assert.IsFalse(success, "Factory should not accept more stock entires than stock limit.");
     }
 
     private Dictionary<int, Recipe> GenerateFactoryTypes()
