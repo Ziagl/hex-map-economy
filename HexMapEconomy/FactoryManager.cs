@@ -1,5 +1,4 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
-using HexMapEconomy.Interfaces;
 using HexMapEconomy.Models;
 
 namespace HexMapEconomy;
@@ -8,13 +7,10 @@ public class FactoryManager
 {
     private Dictionary<Guid, Factory> _factoryStore = new();
     private Dictionary<int, Recipe> _recipeStore = new();
-    private IAssetFactory _assetFactory;
 
-
-    public FactoryManager(Dictionary<int, Recipe> definition, AssetManager assetManager)
+    public FactoryManager(Dictionary<int, Recipe> definition)
     {
         _recipeStore = definition;
-        _assetFactory = new AssetFactory(assetManager.AssetStore);
     }
 
     /// <summary>
@@ -31,7 +27,7 @@ public class FactoryManager
         {
             return false;   // this factory type is unknown
         }
-        var factory = new Factory(_recipeStore[type], position, type, ownerId, _assetFactory, stockLimit);
+        var factory = new Factory(_recipeStore[type], position, type, ownerId, stockLimit);
         _factoryStore[factory.Id] = factory;
         return true;
     }

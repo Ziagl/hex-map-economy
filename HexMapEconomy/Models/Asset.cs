@@ -1,4 +1,7 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
+using System.Runtime.CompilerServices;
+
+[assembly: InternalsVisibleTo("HexMapEconomy.Tests")]
 
 namespace HexMapEconomy.Models;
 
@@ -7,7 +10,7 @@ public class Asset : EconomyBase
 {
     public CubeCoordinates Position { get; }
 
-    public Asset(CubeCoordinates position, int type, int ownerId) : base(type, ownerId)
+    internal Asset(CubeCoordinates position, int type, int ownerId) : base(type, ownerId)
     {
         Position = position;
     }

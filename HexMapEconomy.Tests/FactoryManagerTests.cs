@@ -8,12 +8,11 @@ public sealed class FactoryManagerTests
 {
     private readonly int LUMBERJACK = 1;
     private readonly int SAWMILL = 2;
-    private readonly AssetManager _assetManager = new AssetManager();
 
     [TestMethod]
     public void FactoryManagerBasics()
     {
-        var factoryManager = new FactoryManager(GenerateFactoryTypes(), _assetManager);
+        var factoryManager = new FactoryManager(GenerateFactoryTypes());
         var position = new CubeCoordinates(0, 0, 0);
         int type = LUMBERJACK;
         int ownerId = 123;
@@ -36,7 +35,7 @@ public sealed class FactoryManagerTests
     public void FactoryProcess()
     {
         // tests a factory that has no input
-        var factoryManager = new FactoryManager(GenerateFactoryTypes(), _assetManager);
+        var factoryManager = new FactoryManager(GenerateFactoryTypes());
         var position = new CubeCoordinates(0, 0, 0);
         int type = LUMBERJACK;
         int ownerId = 1;
@@ -53,7 +52,7 @@ public sealed class FactoryManagerTests
         factory = factoryManager.GetFactoriesByPosition(position).First();
         factory.Process();
         Assert.AreEqual(0, factory.Productivity, "Factory should not produce output without input.");
-        success = factory.Stock.Add(new StockEntry() { Type = 1, Amount = 1 }); // add wood to stock
+        success = factory.Stock.Add(CreateAssets(1, 1, position, ownerId).First()); // add wood to stock
         Assert.IsTrue(success, "Wood should be added to factory stock.");
         factory.Process();
         Assert.AreEqual(0.5f, factory.Productivity, "Factory should have produced one output.");
@@ -62,7 +61,7 @@ public sealed class FactoryManagerTests
     [TestMethod]
     public void FactoryStock()
     {
-        var factoryManager = new FactoryManager(GenerateFactoryTypes(), _assetManager);
+        var factoryManager = new FactoryManager(GenerateFactoryTypes());
         var position = new CubeCoordinates(1, 1, 1);
         var type = SAWMILL;
         int ownerId = 1;
@@ -70,20 +69,30 @@ public sealed class FactoryManagerTests
         var success = factoryManager.CreateFactory(position, type, ownerId, stockLimit);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = factoryManager.GetFactoriesByPosition(position).First();
-        success = factory.Stock.Add(new StockEntry() { Type = 1, Amount = 3 });
-        Assert.IsTrue(success, "Factory should accept wood into stock.");
-        success = factory.Stock.Add(new StockEntry() { Type = 1, Amount = 3 });
-        Assert.IsFalse(success, "Factory should not accept more wood than stock limit.");
-        success = factory.Stock.Add(new StockEntry() { Type = 2, Amount = 1 });
-        Assert.IsTrue(success, "Factory should accept mixed stock.");
-        success = factory.Stock.Add(new StockEntry() { Type = 2, Amount = 2 });
-        Assert.IsFalse(success, "Factory should not accept more stock entires than stock limit.");
+        int added = factory.Stock.AddRange(CreateAssets(1, 3, position, ownerId));
+        Assert.AreEqual(3, added, "Factory should accept wood into stock.");
+        added = factory.Stock.AddRange(CreateAssets(1, 3, position, ownerId));
+        Assert.AreEqual(0, added, "Factory should not accept more wood than stock limit.");
+        added = factory.Stock.AddRange(CreateAssets(2, 1, position, ownerId));
+        Assert.AreEqual(1, added, "Factory should accept mixed stock.");
+        added = factory.Stock.AddRange(CreateAssets(2, 2, position, ownerId));
+        Assert.AreEqual(0, added, "Factory should not accept more stock entires than stock limit.");
         var entries = factory.Stock.Take(3, 2);
         Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries that do not exist.");
         entries = factory.Stock.Take(2, 4);
         Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries if the requested amount is not available.");
         entries = factory.Stock.Take(1, 3);
-        Assert.IsTrue(entries.Count == 1 && entries.First().Type == 1 && entries.First().Amount == 3, "Factory should take stock entries that exist and have enough amount.");
+        Assert.IsTrue(entries.Count == 3 && entries.All(x => x.Type == 1), "Factory should take stock entries that exist and have enough amount.");
+    }
+
+    private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId)
+    {
+        var assets = new List<Asset>();
+        for (int i = 0; i < amount; i++)
+        {
+            assets.Add(new Asset(position, type, ownerId));
+        }
+        return assets;
     }
 
     private Dictionary<int, Recipe> GenerateFactoryTypes()
@@ -91,12 +100,12 @@ public sealed class FactoryManagerTests
         return new Dictionary<int, Recipe>
         {
             { LUMBERJACK, new Recipe(
-                new List<StockEntry>(), 
-                new List<StockEntry>(){ new StockEntry() { Type = 1, Amount = 1 } }
+                new List<RecipeIngredient>(), 
+                new List<RecipeIngredient>(){ new RecipeIngredient() { Type = 1, Amount = 1 } }
                 ) },    // lumberjack creates wood (abstract)
             { SAWMILL, new Recipe(
-                new List<StockEntry>() { new StockEntry() { Type = 1, Amount = 1 } }, 
-                new List<StockEntry>() { new StockEntry() { Type = 2, Amount = 1 } }
+                new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 } }, 
+                new List<RecipeIngredient>() { new RecipeIngredient() { Type = 2, Amount = 1 } }
                 ) },    // sawmill creates a plank from a wood (abstract)
         };
     }

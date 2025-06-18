@@ -2,7 +2,7 @@
 
 public class Stock
 {
-    public List<StockEntry> Entries { get; } = new();
+    public List<Asset> Assets { get; } = new();
     public int StockLimit { get; init; }
 
     public Stock(int stockLimit = 0)
@@ -11,53 +11,61 @@ public class Stock
     }
 
     /// <summary>
-    /// Adds an entry to the stock of this factory.
+    /// Gets the number of assets of a certain type.
     /// </summary>
-    /// <param name="entry">A stock entry to be added.</param>
-    /// <returns>true: entry was added, false: it was not added, stock is full.</returns>
-    public bool Add(StockEntry entry)
+    public int GetCount(int type)
     {
-        // check if stock limit is reached
-        if (Entries.Sum(s => s.Amount) + entry.Amount >= StockLimit)
+        return Assets.Count(a => a.Type == type);
+    }
+
+    /// <summary>
+    /// Adds an asset to the stock.
+    /// </summary>
+    /// <param name="asset">The asset to add.</param>
+    /// <returns>true if added, false if stock is full.</returns>
+    public bool Add(Asset asset)
+    {
+        if (Assets.Count >= StockLimit && StockLimit > 0)
         {
             return false;
         }
 
-        // check if the stock entry already exists
-        var existingEntry = Entries.FirstOrDefault(s => s.Type == entry.Type);
-        if (existingEntry != null)
-        {
-            // update existing entry
-            Entries.Remove(existingEntry);
-            Entries.Add(new StockEntry { Type = entry.Type, Amount = existingEntry.Amount + entry.Amount });
-        }
-        else
-        {
-            // add new entry
-            Entries.Add(entry);
-        }
+        Assets.Add(asset);
         return true;
     }
 
     /// <summary>
-    /// Removes a specified amount of stock entry from the stock.
+    /// Adds a list of assets to the stock, only if all can be added.
     /// </summary>
-    /// <param name="type">The type of stock entry that should be taken.</param>
-    /// <param name="amount">The amount of stock entry that should be taken.</param>
-    /// <returns>List of entries from stock or an empty list if it was not possible to take that type with given amount.</returns>
-    public List<StockEntry> Take(int type, int amount)
+    /// <param name="assets">The assets to add.</param>
+    /// <returns>Number of assets actually added (all or none).</returns>
+    public int AddRange(IEnumerable<Asset> assets)
     {
-        var stockEntry = Entries.FirstOrDefault(s => s.Type == type);
-        if (stockEntry != null && stockEntry.Amount >= amount)
+        var assetList = assets.ToList();
+        if (assetList.Count > StockLimit - Assets.Count)
         {
-            Entries.Remove(stockEntry);
-            int remaining = stockEntry.Amount - amount;
-            if (remaining > 0)
-            {
-                Entries.Add(new StockEntry { Type = type, Amount = remaining });
-            }
-            return new List<StockEntry> { new StockEntry { Type = type, Amount = amount } };
+            return 0;
         }
-        return new List<StockEntry>();
+
+        Assets.AddRange(assetList);
+        return assetList.Count;
+    }
+
+    /// <summary>
+    /// Takes (removes and returns) a specified number of assets of a given type.
+    /// </summary>
+    /// <param name="type">The type of asset to take.</param>
+    /// <param name="amount">The number of assets to take.</param>
+    /// <returns>List of taken assets, or empty list if not enough assets available.</returns>
+    public List<Asset> Take(int type, int amount)
+    {
+        var assetsOfType = Assets.Where(a => a.Type == type).Take(amount).ToList();
+        if (assetsOfType.Count < amount)
+            return new List<Asset>();
+
+        foreach (var asset in assetsOfType)
+            Assets.Remove(asset);
+
+        return assetsOfType;
     }
 }

@@ -1,5 +1,4 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
-using HexMapEconomy.Interfaces;
 
 namespace HexMapEconomy.Models;
 
@@ -9,22 +8,21 @@ public class Factory : EconomyBase
     public CubeCoordinates Position { get; init; }
     public Recipe Recipe { get; init; }
     public Stock Stock { get; } = new();
-    private IAssetFactory _assetFactory { get; init; }
+
     public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
     private readonly Queue<int> _lastTenTurnsOutput = new(10);
 
-    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, IAssetFactory assetFactory, int stockLimit = 0) : base(type,ownerId)
+    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, int stockLimit = 0) : base(type,ownerId)
     {
         Position = position;
         Recipe = recipe;
-        _assetFactory = assetFactory;
         Stock = new Stock(stockLimit);
     }
 
     /// <summary>
     /// Processes the recipe for this factory.
     /// </summary>
-    public void Process()
+    internal void Process()
     {
         bool success = false;
 
@@ -40,8 +38,8 @@ public class Factory : EconomyBase
             // only if all inputs are available
             success = Recipe.Inputs.All(input =>
             {
-                var stockEntry = Stock.Entries.FirstOrDefault(s => s.Type == input.Type);
-                return stockEntry != null && stockEntry.Amount >= input.Amount;
+                var assets = Stock.Assets.Where(s => s.Type == input.Type);
+                return assets.Count() >= input.Amount;
             });
 
             if (success)
@@ -59,7 +57,6 @@ public class Factory : EconomyBase
                     // from here taken stock entries are not needed anymore
                 }
             }
-            
         }
 
         // create output according to receipe
@@ -69,7 +66,7 @@ public class Factory : EconomyBase
             {
                 for (int i = 0; i < output.Amount; i++)
                 {
-                    _assetFactory.CreateAsset(Position, output.Type, OwnerId);
+                    var asset = new Asset(Position, output.Type, OwnerId);
                 }
             });
         }
