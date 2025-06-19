@@ -67,6 +67,8 @@ public class Factory : EconomyBase
                 for (int i = 0; i < output.Amount; i++)
                 {
                     var asset = new Asset(Position, output.Type, OwnerId);
+                    // adds as much assets to stock as possible
+                    success = Stock.Add(asset);
                 }
             });
         }

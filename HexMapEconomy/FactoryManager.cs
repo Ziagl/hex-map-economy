@@ -3,6 +3,9 @@ using HexMapEconomy.Models;
 
 namespace HexMapEconomy;
 
+/// <summary>
+/// The FactoryManager handles factories on game map and their production processes.
+/// </summary>
 public class FactoryManager
 {
     private Dictionary<Guid, Factory> _factoryStore = new();
