@@ -42,7 +42,7 @@ public sealed class FactoryManagerTests
         bool success = factoryManager.CreateFactory(position, type, ownerId);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = factoryManager.GetFactoriesByPosition(position).First();
-        factory.Process();
+        factoryManager.ProcessFactories();
         Assert.AreEqual(1, factory.Productivity, "Factory should have produced one output.");
         // tests a factory that needs input
         position = new CubeCoordinates(1, 1, 1);
@@ -50,11 +50,11 @@ public sealed class FactoryManagerTests
         success = factoryManager.CreateFactory(position, type, ownerId, 5);
         Assert.IsTrue(success, "Factory should be created successfully.");
         factory = factoryManager.GetFactoriesByPosition(position).First();
-        factory.Process();
+        factoryManager.ProcessFactories();
         Assert.AreEqual(0, factory.Productivity, "Factory should not produce output without input.");
-        success = factory.Stock.Add(CreateAssets(1, 1, position, ownerId).First()); // add wood to stock
+        success = factory.InputStock.Add(CreateAssets(1, 1, position, ownerId).First()); // add wood to stock
         Assert.IsTrue(success, "Wood should be added to factory stock.");
-        factory.Process();
+        factoryManager.ProcessFactories();
         Assert.AreEqual(0.5f, factory.Productivity, "Factory should have produced one output.");
     }
 
@@ -69,28 +69,31 @@ public sealed class FactoryManagerTests
         var success = factoryManager.CreateFactory(position, type, ownerId, stockLimit);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = factoryManager.GetFactoriesByPosition(position).First();
-        int added = factory.Stock.AddRange(CreateAssets(1, 3, position, ownerId));
+        int added = factory.InputStock.AddRange(CreateAssets(1, 3, position, ownerId));
         Assert.AreEqual(3, added, "Factory should accept wood into stock.");
-        added = factory.Stock.AddRange(CreateAssets(1, 3, position, ownerId));
+        added = factory.InputStock.AddRange(CreateAssets(1, 3, position, ownerId));
         Assert.AreEqual(0, added, "Factory should not accept more wood than stock limit.");
-        added = factory.Stock.AddRange(CreateAssets(2, 1, position, ownerId));
+        added = factory.InputStock.AddRange(CreateAssets(2, 1, position, ownerId));
         Assert.AreEqual(1, added, "Factory should accept mixed stock.");
-        added = factory.Stock.AddRange(CreateAssets(2, 2, position, ownerId));
+        added = factory.InputStock.AddRange(CreateAssets(2, 2, position, ownerId));
         Assert.AreEqual(0, added, "Factory should not accept more stock entires than stock limit.");
-        var entries = factory.Stock.Take(3, 2);
+        factoryManager.ProcessFactories(); // process factory to make assets available
+        var entries = factory.InputStock.Take(3, 2);
         Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries that do not exist.");
-        entries = factory.Stock.Take(2, 4);
+        entries = factory.InputStock.Take(2, 4);
         Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries if the requested amount is not available.");
-        entries = factory.Stock.Take(1, 3);
-        Assert.IsTrue(entries.Count == 3 && entries.All(x => x.Type == 1), "Factory should take stock entries that exist and have enough amount.");
+        entries = factory.InputStock.Take(1, 2); // only get 2, because ProcessFactories also consumes one of 3 in store!
+        Assert.IsTrue(entries.Count == 2 && entries.All(x => x.Type == 1), "Factory should take stock entries that exist and have enough amount.");
     }
 
-    private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId)
+    private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 0)
     {
         var assets = new List<Asset>();
         for (int i = 0; i < amount; i++)
         {
-            assets.Add(new Asset(position, type, ownerId));
+            var asset = new Asset(position, type, ownerId);
+            asset.InitializeTransport(position, distance);
+            assets.Add(asset);
         }
         return assets;
     }

@@ -59,7 +59,8 @@ public class Stock
     /// <returns>List of taken assets, or empty list if not enough assets available.</returns>
     public List<Asset> Take(int type, int amount)
     {
-        var assetsOfType = Assets.Where(a => a.Type == type).Take(amount).ToList();
+        var assetsOfType = Assets.Where(a => a.Type == type && a.IsAvailable)
+                                 .Take(amount).ToList();
         if (assetsOfType.Count < amount)
             return new List<Asset>();
 

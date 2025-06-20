@@ -7,7 +7,8 @@ public class Factory : EconomyBase
 {
     public CubeCoordinates Position { get; init; }
     public Recipe Recipe { get; init; }
-    public Stock Stock { get; } = new();
+    public Stock InputStock { get; } = new();
+    public Stock OutputStock { get; } = new();
 
     public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
     private readonly Queue<int> _lastTenTurnsOutput = new(10);
@@ -16,7 +17,8 @@ public class Factory : EconomyBase
     {
         Position = position;
         Recipe = recipe;
-        Stock = new Stock(stockLimit);
+        InputStock = new Stock(stockLimit);
+        OutputStock = new Stock(recipe.Outputs.Sum(output => output.Amount));
     }
 
     /// <summary>
@@ -38,7 +40,7 @@ public class Factory : EconomyBase
             // only if all inputs are available
             success = Recipe.Inputs.All(input =>
             {
-                var assets = Stock.Assets.Where(s => s.Type == input.Type);
+                var assets = InputStock.Assets.Where(s => s.Type == input.Type && s.IsAvailable).ToList();
                 return assets.Count() >= input.Amount;
             });
 
@@ -47,7 +49,7 @@ public class Factory : EconomyBase
                 // consume the required inputs from stock
                 foreach (var input in Recipe.Inputs)
                 {
-                    var takenEntries = Stock.Take(input.Type, input.Amount);
+                    var takenEntries = InputStock.Take(input.Type, input.Amount);
                     // Only proceed if the required amount was actually taken
                     if (takenEntries.Count == 0)
                     {
@@ -68,7 +70,7 @@ public class Factory : EconomyBase
                 {
                     var asset = new Asset(Position, output.Type, OwnerId);
                     // adds as much assets to stock as possible
-                    success = Stock.Add(asset);
+                    success = OutputStock.Add(asset);
                 }
             });
         }

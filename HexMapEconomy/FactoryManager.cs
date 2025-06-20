@@ -95,7 +95,16 @@ public class FactoryManager
     {
         foreach (var factory in _factoryStore.Values)
         {
+            // process each asset that is transported to the factory
+            factory.InputStock.Assets.ForEach(asset =>
+            {
+                asset.Process();
+            });
+            // process the production of factory
             factory.Process();
+            // process the outputs to be transported further
+            // TODO
+            // all outputstock assets should be transported to next factory inputstock
         }
     }
 }
