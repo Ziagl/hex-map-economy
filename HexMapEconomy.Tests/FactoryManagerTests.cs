@@ -95,6 +95,7 @@ public sealed class FactoryManagerTests
             asset.InitializeTransport(position, distance);
             assets.Add(asset);
         }
+
         return assets;
     }
 

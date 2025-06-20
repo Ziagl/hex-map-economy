@@ -15,7 +15,7 @@ public class Factory : EconomyBase
     public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
     private readonly Queue<int> _lastTenTurnsOutput = new(10);
 
-    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, int areaOfInfluence = 0,  int stockLimit = 0) : base(type,ownerId)
+    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, int stockLimit = 0, int areaOfInfluence = 0) : base(type,ownerId)
     {
         Position = position;
         Recipe = recipe;
