@@ -93,6 +93,11 @@ public class FactoryManager
     /// cref="IFactory.Process"/> method.</remarks>
     public void ProcessFactories()
     {
+        // first make groups of factories by owner
+        var factoriesByOwner = _factoryStore.Values
+                .GroupBy(factory => factory.OwnerId)
+                .ToDictionary(g => g.Key, g => g.ToList());
+
         foreach (var factory in _factoryStore.Values)
         {
             // process each asset that is transported to the factory
@@ -103,8 +108,111 @@ public class FactoryManager
             // process the production of factory
             factory.Process();
             // process the outputs to be transported further
-            // TODO
-            // all outputstock assets should be transported to next factory inputstock
+            ProcessFactoryOutputs(factoriesByOwner[factory.OwnerId]);
+        }
+    }
+
+    // all outputstock assets should be transported to next factory inputstock
+    private void ProcessFactoryOutputs(List<Factory> factories)
+    {
+        // generators (factory without inputs like a lumberjack)
+        /*var generators = factories
+                .Where(f => f.Recipe.Inputs == null ||
+                            f.Recipe.Inputs.Count == 0)
+                .ToList();*/
+
+        // producers ( factory with inputs like a sawmill)
+        var producers = factories
+                .Where(f => f.Recipe.Inputs != null &&
+                            f.Recipe.Inputs.Count > 0)
+                .ToList();
+
+        // generate a list of needed ingredients
+        var demands = new List<Demand>();
+        foreach (var producer in producers)
+        {
+            foreach (var input in producer.Recipe.Inputs)
+            {
+                int currentAmount = producer.InputStock.GetCount(input.Type);
+                int missingAmount = input.Amount - currentAmount;
+                if (missingAmount > 0)
+                {
+                    // Add a demand for the missing amount of this ingredient
+                    demands.Add(new Demand(
+                        producer,
+                        new RecipeIngredient()
+                        {
+                            Type = input.Type,
+                            Amount = missingAmount
+                        }
+                    ));
+                }
+            }
+        }
+
+        // try to fulfill demands
+        foreach (var demand in demands)
+        {
+            // get a list of all factories that are not the one of demand and sort them by distance from demand.Factory to the actual factory from small to large
+            var sortedFactories = factories
+                .Where(f => f != demand.Factory)
+                .OrderBy(f => demand.Factory.Position.DistanceTo(f.Position))
+                .ToList();
+
+            foreach(var factory in sortedFactories)
+            {
+                if(demand.Factory.Id == factory.Id)
+                {
+                    continue;   // skip the factory that is already the demand factory
+                }
+
+                // get the maximum amount of demand that this factory can handle
+                int possibleAmount = Math.Min(
+                    factory.OutputStock.GetCount(demand.Ingredient.Type),
+                    demand.Ingredient.Amount);
+
+                if (possibleAmount == 0)
+                {
+                    continue;   // this factory has no assets of the required type
+                }
+
+                // get assets from factory
+                var assets = factory.OutputStock.Take(demand.Ingredient.Type, possibleAmount);
+
+                // check if demand factory can handle this input
+                if(demand.Factory.InputStock.GetCount(demand.Ingredient.Type) + assets.Count > demand.Factory.InputStock.StockLimit)
+                {
+                    throw new Exception($"Factory {demand.Factory.Id} can not handle demand.");
+                }
+
+                // adjust assets
+                foreach(var asset in assets)
+                {
+                    int distance = factory.Position.DistanceTo(demand.Factory.Position);
+                    int area = Math.Max(1, demand.Factory.AreaOfInfluence);
+                    float turns = (float)distance / area;
+                    int distanceInTurns = (int)Math.Ceiling(turns);
+
+                    asset.InitializeTransport(
+                        demand.Factory.Position,
+                        distanceInTurns);
+                }
+
+                // add assets to factory with demand
+                var addedAssets = demand.Factory.InputStock.AddRange(assets);
+
+                if(addedAssets != assets.Count)
+                {
+                    throw new Exception($"Factory {demand.Factory.Id} could not add all assets to input stock.");
+                }
+
+                // adjust this demand and check if it is fulfilled
+                demand.Ingredient.Amount -= possibleAmount;
+                if (demand.Ingredient.Amount == 0)
+                {
+                    break;
+                }
+            }
         }
     }
 }

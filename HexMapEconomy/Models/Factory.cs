@@ -5,20 +5,23 @@ namespace HexMapEconomy.Models;
 // a building that generates Assets or combines them to other Assets
 public class Factory : EconomyBase
 {
-    public CubeCoordinates Position { get; init; }
-    public Recipe Recipe { get; init; }
-    public Stock InputStock { get; } = new();
-    public Stock OutputStock { get; } = new();
+    public CubeCoordinates Position { get; init; }  // map position of this factory
+    public Recipe Recipe { get; init; }             // recipe defines of this factory works
+    public Stock InputStock { get; } = new();       // limited input stock
+    public Stock OutputStock { get; } = new();      // limited output stock for one production cycle
+    public int AreaOfInfluence { get; init; }       // the area (max distance) for which input assets are transported directly without time loss
 
+    // statistic information about the factory
     public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
     private readonly Queue<int> _lastTenTurnsOutput = new(10);
 
-    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, int stockLimit = 0) : base(type,ownerId)
+    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, int areaOfInfluence = 0,  int stockLimit = 0) : base(type,ownerId)
     {
         Position = position;
         Recipe = recipe;
         InputStock = new Stock(stockLimit);
         OutputStock = new Stock(recipe.Outputs.Sum(output => output.Amount));
+        AreaOfInfluence = areaOfInfluence;
     }
 
     /// <summary>
@@ -83,7 +86,10 @@ public class Factory : EconomyBase
     private void AddOutput(int value)
     {
         if (_lastTenTurnsOutput.Count == 10)
+        {
             _lastTenTurnsOutput.Dequeue();
+        }
+
         _lastTenTurnsOutput.Enqueue(value);
     }
 }

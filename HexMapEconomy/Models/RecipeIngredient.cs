@@ -3,5 +3,5 @@
 public class RecipeIngredient
 {
     public int Type { get; init; } // type of the asset
-    public int Amount { get; init; } // amount of the asset in stock
+    public int Amount { get; set; } // amount of the asset in stock
 }

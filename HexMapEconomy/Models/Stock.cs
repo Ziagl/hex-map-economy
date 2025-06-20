@@ -62,10 +62,14 @@ public class Stock
         var assetsOfType = Assets.Where(a => a.Type == type && a.IsAvailable)
                                  .Take(amount).ToList();
         if (assetsOfType.Count < amount)
+        {
             return new List<Asset>();
+        }
 
         foreach (var asset in assetsOfType)
+        {
             Assets.Remove(asset);
+        }
 
         return assetsOfType;
     }
