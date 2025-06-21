@@ -23,14 +23,14 @@ public class FactoryManager
     /// <param name="type">Type of created Factory.</param>
     /// <param name="ownerId">The owner of this Factory.</param>
     /// <returns>true if Factory was created successfully, otherwise false.</returns>
-    public bool CreateFactory(CubeCoordinates position, int type, int ownerId, int stockLimit = 0)
+    public bool CreateFactory(CubeCoordinates position, int type, int ownerId, int stockLimit = 0, int areaOfInfluence = 0)
     {
         // early exit
         if(!_recipeStore.ContainsKey(type))
         {
             return false;   // this factory type is unknown
         }
-        var factory = new Factory(_recipeStore[type], position, type, ownerId, stockLimit);
+        var factory = new Factory(_recipeStore[type], position, type, ownerId, stockLimit, areaOfInfluence);
         _factoryStore[factory.Id] = factory;
         return true;
     }
@@ -115,12 +115,6 @@ public class FactoryManager
     // all outputstock assets should be transported to next factory inputstock
     private void ProcessFactoryOutputs(List<Factory> factories)
     {
-        // generators (factory without inputs like a lumberjack)
-        /*var generators = factories
-                .Where(f => f.Recipe.Inputs == null ||
-                            f.Recipe.Inputs.Count == 0)
-                .ToList();*/
-
         // producers ( factory with inputs like a sawmill)
         var producers = factories
                 .Where(f => f.Recipe.Inputs != null &&
