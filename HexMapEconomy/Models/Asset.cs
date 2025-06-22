@@ -16,11 +16,13 @@ public class Asset : EconomyBase
     public bool IsAvailable { get { return _isAvailable; } }
     private bool _isAvailable = false;
 
-    internal Asset(CubeCoordinates position, int type, int ownerId) : base(type, ownerId)
+    internal Asset(CubeCoordinates position, int type, int ownerId, bool rawMaterial = false) : base(type, ownerId)
     {
         _position = position;
         _turnsUntilAvailable = int.MaxValue;
-        _isAvailable = false;
+        // a generator factory creates assets that are immediately available
+        // f.e. a mine of lumberjack
+        _isAvailable = rawMaterial;
     }
 
     public void InitializeTransport(CubeCoordinates newPosition, int distanceInTurns)
@@ -35,10 +37,11 @@ public class Asset : EconomyBase
         if (_turnsUntilAvailable > 0)
         {
             _turnsUntilAvailable--;
-        }
-        else
-        {
-            _isAvailable = true;
+
+            if (_turnsUntilAvailable == 0)
+            {
+                _isAvailable = true;
+            }
         }
     }
 }

@@ -30,9 +30,10 @@ public class Factory : EconomyBase
     internal void Process()
     {
         bool success = false;
+        bool generator = Recipe.Inputs.Count == 0;
 
         // if a receipe has no inputs, the factury is a generator, like a mine or a lumberjack
-        if (Recipe.Inputs.Count == 0)
+        if (generator)
         {
             // generator logic, e.g. mine or lumberjack
             success = true;
@@ -71,7 +72,7 @@ public class Factory : EconomyBase
             {
                 for (int i = 0; i < output.Amount; i++)
                 {
-                    var asset = new Asset(Position, output.Type, OwnerId);
+                    var asset = new Asset(Position, output.Type, OwnerId, generator);
                     // adds as much assets to stock as possible
                     success = OutputStock.Add(asset);
                 }

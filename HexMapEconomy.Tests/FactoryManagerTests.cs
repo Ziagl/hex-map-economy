@@ -45,7 +45,7 @@ public sealed class FactoryManagerTests
         factoryManager.ProcessFactories();
         Assert.AreEqual(1, factory.Productivity, "Factory should have produced one output.");
         // tests a factory that needs input
-        position = new CubeCoordinates(1, 1, 1);
+        position = new CubeCoordinates(1, 1, -2);
         type = SAWMILL;
         success = factoryManager.CreateFactory(position, type, ownerId, 5);
         Assert.IsTrue(success, "Factory should be created successfully.");
@@ -62,7 +62,7 @@ public sealed class FactoryManagerTests
     public void FactoryStock()
     {
         var factoryManager = new FactoryManager(GenerateFactoryTypes());
-        var position = new CubeCoordinates(1, 1, 1);
+        var position = new CubeCoordinates(1, 1, -2);
         var type = SAWMILL;
         int ownerId = 1;
         int stockLimit = 5;
@@ -86,7 +86,38 @@ public sealed class FactoryManagerTests
         Assert.IsTrue(entries.Count == 2 && entries.All(x => x.Type == 1), "Factory should take stock entries that exist and have enough amount.");
     }
 
-    private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 0)
+    [TestMethod]
+    public void FactoryDemands()
+    {
+        var factoryManager = new FactoryManager(GenerateFactoryTypes());
+        // add a generator
+        var position = new CubeCoordinates(0, 0, 0);
+        int type = LUMBERJACK;
+        int ownerId = 1;
+        bool success = factoryManager.CreateFactory(position, type, ownerId);
+        var generator = factoryManager.GetFactoriesByPosition(position).First();
+        Assert.IsTrue(success, "Factory (generator) should be created successfully.");
+        // add a producer
+        position = new CubeCoordinates(1, 1, -2);
+        type = SAWMILL;
+        int stockLimit = 2;
+        int areaOfInfluence = 1;
+        success = factoryManager.CreateFactory(position, type, ownerId, stockLimit, areaOfInfluence);
+        Assert.IsTrue(success, "Factory (producer) should be created successfully.");
+        var factory = factoryManager.GetFactoriesByPosition(position).First();
+        // compute 1 turn
+        // generator creates 1 wood and puts it into stock of producer -> distance is 2
+        factoryManager.ProcessFactories();
+        Assert.AreEqual(1, factory.InputStock.Assets.Count, "Factory should have 1 wood in stock after processing.");
+        Assert.AreEqual(2, factory.InputStock.Assets.First().TurnsUntilAvailable, "Asset should have an available counter of 2.");
+        factoryManager.ProcessFactories();
+        Assert.AreEqual(2, factory.InputStock.Assets.Count, "Factory should still have 2 wood in stock after second processing.");
+        Assert.AreEqual(0, factory.OutputStock.Assets.Count, "Factory should have an empty output stock after second processing.");
+        factoryManager.ProcessFactories();
+        Assert.AreEqual(1, factory.OutputStock.Assets.Count, "Factory should have 1 plank in output stock after third processing.");
+    }
+
+    private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 1)
     {
         var assets = new List<Asset>();
         for (int i = 0; i < amount; i++)

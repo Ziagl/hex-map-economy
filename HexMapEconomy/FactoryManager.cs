@@ -87,28 +87,38 @@ public class FactoryManager
     }
 
     /// <summary>
-    /// Processes all factories stored in the factory collection.
+    /// Processes all factories by handling their input assets, executing their production processes,
+    /// and managing the outputs for further transportation.
     /// </summary>
-    /// <remarks>This method iterates through all factories in the internal collection and invokes their  <see
-    /// cref="IFactory.Process"/> method.</remarks>
     public void ProcessFactories()
     {
-        // first make groups of factories by owner
-        var factoriesByOwner = _factoryStore.Values
-                .GroupBy(factory => factory.OwnerId)
-                .ToDictionary(g => g.Key, g => g.ToList());
+        // Cache factories to avoid multiple enumerations
+        var factories = _factoryStore.Values.ToList();
 
-        foreach (var factory in _factoryStore.Values)
+        // Group factories by owner once
+        var factoriesByOwner = factories
+            .GroupBy(factory => factory.OwnerId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Process each asset that is transported to the factory
+        foreach (var factory in factories)
         {
-            // process each asset that is transported to the factory
-            factory.InputStock.Assets.ForEach(asset =>
+            foreach (var asset in factory.InputStock.Assets)
             {
                 asset.Process();
-            });
-            // process the production of factory
+            }
+        }
+
+        // Process the production of each factory
+        foreach (var factory in factories)
+        {
             factory.Process();
-            // process the outputs to be transported further
-            ProcessFactoryOutputs(factoriesByOwner[factory.OwnerId]);
+        }
+
+        foreach(var ownerFactories in factoriesByOwner.Values)
+        {
+            // Process the outputs to be transported further, once per owner
+            ProcessFactoryOutputs(ownerFactories);
         }
     }
 
@@ -118,17 +128,33 @@ public class FactoryManager
         // producers ( factory with inputs like a sawmill)
         var producers = factories
                 .Where(f => f.Recipe.Inputs != null &&
-                            f.Recipe.Inputs.Count > 0)
+                            f.Recipe.Inputs.Count > 0 &&
+                            f.InputStock.StockLimit > 0)
                 .ToList();
 
         // generate a list of needed ingredients
         var demands = new List<Demand>();
         foreach (var producer in producers)
         {
+            Dictionary<int, int> calculatedMaxAmount = new();
+
+            // storage needed to produce one output
+            int totalInputPerCycle = producer.Recipe.Inputs.Sum(x => x.Amount);
+            // max possible cycles that fit in stock
+            int maxCycles = producer.InputStock.StockLimit / totalInputPerCycle;
+            // remainder space for this ingredient
+            int remainder = producer.InputStock.StockLimit % totalInputPerCycle;
+            foreach (var input in producer.Recipe.Inputs)
+            {
+                // max amount for this ingredient: cycles * amount per cycle + min(remainder, amount per cycle)
+                calculatedMaxAmount[input.Type] = (maxCycles * input.Amount) + Math.Min(remainder, input.Amount);
+            }
+            
+            // create maximum demand to fill the stock
             foreach (var input in producer.Recipe.Inputs)
             {
                 int currentAmount = producer.InputStock.GetCount(input.Type);
-                int missingAmount = input.Amount - currentAmount;
+                int missingAmount = calculatedMaxAmount[input.Type] - currentAmount;
                 if (missingAmount > 0)
                 {
                     // Add a demand for the missing amount of this ingredient
@@ -155,11 +181,6 @@ public class FactoryManager
 
             foreach(var factory in sortedFactories)
             {
-                if(demand.Factory.Id == factory.Id)
-                {
-                    continue;   // skip the factory that is already the demand factory
-                }
-
                 // get the maximum amount of demand that this factory can handle
                 int possibleAmount = Math.Min(
                     factory.OutputStock.GetCount(demand.Ingredient.Type),
