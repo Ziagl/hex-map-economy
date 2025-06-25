@@ -7,9 +7,10 @@ public class Recipe
     public List<RecipeIngredient> Outputs { get; init; } // list of output assets, each as asset type and amount
     public int Duration { get; init; } // duration of the recipe in time units (e.g. turns, seconds)
 
-    public Recipe(List<RecipeIngredient> inputs, List<RecipeIngredient> outputs)
+    public Recipe(List<RecipeIngredient> inputs, List<RecipeIngredient> outputs, int duration = 1)
     {
         Inputs = inputs;
         Outputs = outputs;
+        Duration = duration;
     }
 }

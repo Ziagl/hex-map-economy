@@ -4,38 +4,43 @@ using HexMapEconomy.Models;
 namespace HexMapEconomy.Tests;
 
 [TestClass]
-public sealed class FactoryManagerTests
+public sealed class EconomyManagerTests
 {
     private readonly int LUMBERJACK = 1;
     private readonly int SAWMILL = 2;
 
     [TestMethod]
-    public void FactoryManagerBasics()
+    public void EconomyManagerBasics()
     {
-        var factoryManager = new FactoryManager(GenerateFactoryTypes());
+        var manager = new EconomyManager(GenerateFactoryTypes());
+        // factories
         var position = new CubeCoordinates(0, 0, 0);
         int type = LUMBERJACK;
         int ownerId = 123;
-        bool success = factoryManager.CreateFactory(position, type, ownerId);
+        bool success = manager.CreateFactory(position, type, ownerId);
         Assert.IsTrue(success, "Factory should be created successfully.");
-        success = factoryManager.CreateFactory(position, 99, ownerId);
+        success = manager.CreateFactory(position, 99, ownerId);
         Assert.IsFalse(success, "Factory should not be created with an unknown type.");
-        Assert.AreEqual(1, factoryManager.CountFactories(), "Exactly one Factory should be in store.");
-        var factories = factoryManager.GetFactoriesByPosition(position);
+        Assert.AreEqual(1, manager.CountFactories(), "Exactly one Factory should be in store.");
+        var factories = manager.GetFactoriesByPosition(position);
         Assert.AreEqual(1, factories.Count, "There should be one factory at the specified position.");
-        success = factoryManager.ChangeFactoryOwner(factories.First().Id, 456);
+        success = manager.ChangeFactoryOwner(factories.First().Id, 456);
         Assert.IsTrue(success, "Factory owner should be changed successfully.");
         Assert.AreEqual(456, factories.First().OwnerId, "Factory owner ID should be updated.");
-        success = factoryManager.RemoveFactory(factories.First().Id);
+        success = manager.RemoveFactory(factories.First().Id);
         Assert.IsTrue(success, "Factory should be removed successfully.");
-        Assert.AreEqual(0, factoryManager.CountFactories(), "Factory store should be empty after removal.");
+        Assert.AreEqual(0, manager.CountFactories(), "Factory store should be empty after removal.");
+        // warehouses
+        position = new CubeCoordinates(1, 1, -2);
+        success = manager.CreateWarehouse(position, ownerId, 10);
+        Assert.IsTrue(success, "Warehouse should be created successfully.");
     }
 
     [TestMethod]
     public void FactoryProcess()
     {
         // tests a factory that has no input
-        var factoryManager = new FactoryManager(GenerateFactoryTypes());
+        var factoryManager = new EconomyManager(GenerateFactoryTypes());
         var position = new CubeCoordinates(0, 0, 0);
         int type = LUMBERJACK;
         int ownerId = 1;
@@ -61,7 +66,7 @@ public sealed class FactoryManagerTests
     [TestMethod]
     public void FactoryStock()
     {
-        var factoryManager = new FactoryManager(GenerateFactoryTypes());
+        var factoryManager = new EconomyManager(GenerateFactoryTypes());
         var position = new CubeCoordinates(1, 1, -2);
         var type = SAWMILL;
         int ownerId = 1;
@@ -89,7 +94,7 @@ public sealed class FactoryManagerTests
     [TestMethod]
     public void FactoryDemands()
     {
-        var factoryManager = new FactoryManager(GenerateFactoryTypes());
+        var factoryManager = new EconomyManager(GenerateFactoryTypes());
         // add a generator
         var position = new CubeCoordinates(0, 0, 0);
         int type = LUMBERJACK;

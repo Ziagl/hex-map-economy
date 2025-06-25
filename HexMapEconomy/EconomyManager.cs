@@ -6,15 +6,42 @@ namespace HexMapEconomy;
 /// <summary>
 /// The FactoryManager handles factories on game map and their production processes.
 /// </summary>
-public class FactoryManager
+public class EconomyManager
 {
     private Dictionary<Guid, Factory> _factoryStore = new();
+    private Dictionary<Guid, Warehouse> _warehouseStore = new();
     private Dictionary<int, Recipe> _recipeStore = new();
 
-    public FactoryManager(Dictionary<int, Recipe> definition)
+    public EconomyManager(Dictionary<int, Recipe> definition)
     {
         _recipeStore = definition;
     }
+
+    /// <summary>
+    /// Creates a new Warehouse at a given position.
+    /// </summary>
+    /// <param name="position">Position in CubeCoordinates.</param>
+    /// <returns>true if the warehouse was created, false if there is already a warehouse on this position.</returns>
+    public bool CreateWarehouse(CubeCoordinates position, int ownerId, int stockLimit)
+    {   
+        // early exit
+        if (_warehouseStore.Values.Any(w => w.Position.Equals(position)))
+        {
+            return false;   // this warehouse already exists
+        }
+        
+        var warehouse = new Warehouse(position, ownerId, stockLimit);
+        _warehouseStore[warehouse.Id] = warehouse;
+        return true;
+    }
+
+    /// <summary>
+    /// Retrieves a warehouse that is located at the specified position or null.
+    /// </summary>
+    /// <param name="position">The coordinates of the position to search for warehouses.</param>
+    /// <returns>A warehouse object or null if there is none at this position.</returns>
+    public Warehouse? GetWarehouseByPosition(CubeCoordinates position)
+        => _warehouseStore.Values.FirstOrDefault(warehouse => warehouse.Position.Equals(position));
 
     /// <summary>
     /// Creates a new <see cref="Factory"/> at the given position with the specified type and owner.
@@ -42,11 +69,9 @@ public class FactoryManager
     /// <returns>A list of <see cref="Factory"/> objects located at the specified position. 
     /// Returns an empty list if no factories are found at the given position.</returns>
     public List<Factory> GetFactoriesByPosition(CubeCoordinates position)
-    {
-        return _factoryStore.Values
+        => _factoryStore.Values
             .Where(factory => factory.Position.Equals(position))
             .ToList();
-    }
 
     /// <summary>
     /// Removes the factory with the specified identifier from the store.
