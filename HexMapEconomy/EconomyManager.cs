@@ -50,14 +50,18 @@ public class EconomyManager
     /// <param name="type">Type of created Factory.</param>
     /// <param name="ownerId">The owner of this Factory.</param>
     /// <returns>true if Factory was created successfully, otherwise false.</returns>
-    public bool CreateFactory(CubeCoordinates position, int type, int ownerId, int stockLimit = 0, int areaOfInfluence = 0)
+    public bool CreateFactory(CubeCoordinates position, int type, int ownerId, Warehouse warehouse, int stockLimit = 0, int areaOfInfluence = 0)
     {
         // early exit
-        if(!_recipeStore.ContainsKey(type))
+        if (!_recipeStore.ContainsKey(type))
         {
             return false;   // this factory type is unknown
         }
-        var factory = new Factory(_recipeStore[type], position, type, ownerId, stockLimit, areaOfInfluence);
+        if (ownerId != warehouse.OwnerId)
+        {
+            return false;   // owner of factory must be the same as owner of warehouse
+        }
+        var factory = new Factory(_recipeStore[type], position, type, ownerId, warehouse, stockLimit, areaOfInfluence);
         _factoryStore[factory.Id] = factory;
         return true;
     }
@@ -79,18 +83,14 @@ public class EconomyManager
     /// <param name="factoryId">The unique identifier of the factory to remove.</param>
     /// <returns>true if the factory was successfully removed, otherwise false.</returns>
     public bool RemoveFactory(Guid factoryId)
-    {
-        return _factoryStore.Remove(factoryId);
-    }
+        => _factoryStore.Remove(factoryId);
 
     /// <summary>
     /// Gets the total number of factories currently stored.
     /// </summary>
     /// <returns>The total count of factories.</returns>
     public int CountFactories()
-    {
-        return _factoryStore.Count;
-    }
+        => _factoryStore.Count;
 
     /// <summary>
     /// Changes the owner of the specified factory to a new owner.

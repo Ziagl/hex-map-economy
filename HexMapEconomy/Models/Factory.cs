@@ -10,15 +10,17 @@ public class Factory : EconomyBase
     public Stock InputStock { get; } = new();       // limited input stock
     public Stock OutputStock { get; } = new();      // limited output stock for one production cycle
     public int AreaOfInfluence { get; init; }       // the area (max distance) for which input assets are transported directly without time loss
+    public Warehouse Warehouse { get; init; }
 
     // statistic information about the factory
     public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
     private readonly Queue<int> _lastTenTurnsOutput = new(10);
 
-    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, int stockLimit = 0, int areaOfInfluence = 0) : base(type,ownerId)
+    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, Warehouse warehouse, int stockLimit = 0, int areaOfInfluence = 0) : base(type,ownerId)
     {
         Position = position;
         Recipe = recipe;
+        Warehouse = warehouse;
         InputStock = new Stock(stockLimit);
         OutputStock = new Stock(recipe.Outputs.Sum(output => output.Amount));
         AreaOfInfluence = areaOfInfluence;
