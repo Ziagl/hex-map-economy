@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Title>Hexagon Map Resource and Economy Library</Title>
-    <Version>0.0.1</Version>
+    <Version>0.0.2</Version>
     <Authors>Werner Ziegelwanger</Authors>
     <Company>Hexagon Simulations</Company>
     <Description>A library for resource handling and economy (production path and buildings) for tiled based games.</Description>

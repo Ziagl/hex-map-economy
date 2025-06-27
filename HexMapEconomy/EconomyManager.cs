@@ -12,6 +12,8 @@ public class EconomyManager
     private Dictionary<Guid, Factory> _factoryStore = new();
     private Dictionary<Guid, Warehouse> _warehouseStore = new();
     private Dictionary<int, Recipe> _recipeStore = new();
+    // how many tiles an Asset can be transported per turn
+    private readonly int _transportationPerTurn = 5;   // TODO: make this configurable 
 
     public EconomyManager(Dictionary<int, Recipe> definition)
     {
@@ -174,8 +176,8 @@ public class EconomyManager
             // generate demands for all factories and add it to the warehouse
             CreateFactoryDemands(ownerFactories);
 
-            // Process the outputs to be transported further, once per owner
-            //ProcessFactoryOutputs(ownerFactories);
+            // process the outputs to be transported further, once per owner
+            FulfillFactoryDemands(warehousesByOwner[ownerFactories.First().OwnerId]);
         }
     }
 
@@ -226,67 +228,66 @@ public class EconomyManager
         }
     }
 
-    // all outputstock assets should be transported to next factory inputstock
-    /*private void ProcessFactoryOutputs(List<Factory> factories)
+    private void FulfillFactoryDemands(List<Warehouse> warehouses)
     {
-        // try to fulfill demands
-        foreach (var demand in demands)
+        foreach(var warehouse in warehouses)
         {
-            // get a list of all factories that are not the one of demand and sort them by distance from demand.Factory to the actual factory from small to large
-            var sortedFactories = factories
-                .Where(f => f != demand.Factory)
-                .OrderBy(f => demand.Factory.Position.DistanceTo(f.Position))
-                .ToList();
-
-            foreach(var factory in sortedFactories)
+            foreach(var demand in warehouse.Demands)
             {
-                // get the maximum amount of demand that this factory can handle
-                int possibleAmount = Math.Min(
-                    factory.Warehouse.Stock.GetCount(demand.Ingredient.Type),
-                    demand.Ingredient.Amount);
-
-                if (possibleAmount == 0)
+                // check demand against all other warehouses
+                var otherWarehouses = warehouses
+                    .Where(w => w.Id != warehouse.Id)
+                    .OrderBy(w => w.Position.DistanceTo(warehouse.Position))
+                    .ToList();
+                foreach (var otherWarehouse in otherWarehouses)
                 {
-                    continue;   // this factory has no assets of the required type
-                }
+                    // get the maximum amount of this ingredient that can be taken from this warehouse
+                    int possibleAmount = Math.Min(
+                        otherWarehouse.Stock.GetCount(demand.Ingredient.Type),
+                        demand.Ingredient.Amount);
+                    if (possibleAmount == 0)
+                    {
+                        continue;   // this warehouse has no assets of the required type
+                    }
+                    
+                    // check if demand factory can handle this input
+                    if (warehouse.Stock.GetCount(demand.Ingredient.Type) + possibleAmount <= warehouse.Stock.StockLimit)
+                    {
+                        int distance = otherWarehouse.Position.DistanceTo(warehouse.Position);
+                        // get assets from warehouse
+                        var assets = otherWarehouse.Stock.Take(demand.Ingredient.Type, possibleAmount);
 
-                // get assets from factory
-                var assets = factory.Warehouse.Stock.Take(demand.Ingredient.Type, possibleAmount);
-
-                // check if demand factory can handle this input
-                if(demand.Factory.Warehouse.Stock.GetCount(demand.Ingredient.Type) + assets.Count > demand.Factory.Warehouse.Stock.StockLimit)
-                {
-                    throw new Exception($"Factory {demand.Factory.Id} can not handle demand.");
-                }
-
-                // adjust assets
-                foreach(var asset in assets)
-                {
-                    int distance = factory.Position.DistanceTo(demand.Factory.Position);
-                    int area = Math.Max(1, demand.Factory.AreaOfInfluence);
-                    float turns = (float)distance / area;
-                    int distanceInTurns = (int)Math.Ceiling(turns);
-
-                    asset.InitializeTransport(
-                        demand.Factory.Position,
-                        distanceInTurns);
-                }
-
-                // add assets to factory with demand
-                var addedAssets = demand.Factory.Warehouse.Stock.AddRange(assets);
-
-                if(addedAssets != assets.Count)
-                {
-                    throw new Exception($"Factory {demand.Factory.Id} could not add all assets to input stock.");
-                }
-
-                // adjust this demand and check if it is fulfilled
-                demand.Ingredient.Amount -= possibleAmount;
-                if (demand.Ingredient.Amount == 0)
-                {
-                    break;
+                        // adjust assets
+                        foreach (var asset in assets)
+                        {
+                            float turns = (float)distance / _transportationPerTurn;
+                            int distanceInTurns = (int)Math.Ceiling(turns);
+                            asset.InitializeTransport(
+                                warehouse.Position,
+                                distanceInTurns);
+                        }
+                        // add assets to warehouse with demand
+                        var addedAssets = warehouse.Stock.AddRange(assets);
+                        if (addedAssets != assets.Count)
+                        {
+                            throw new Exception($"Warehouse {warehouse.Id} could not add all assets to input stock.");
+                        }
+                        // adjust this demand and check if it is fulfilled
+                        demand.Ingredient.Amount -= possibleAmount;
+                        if (demand.Ingredient.Amount == 0)
+                        {
+                            break;  // demand is fulfilled, no need to check further warehouses
+                        }
+                    }
+                    else
+                    {
+                        throw new Exception($"Warehouse {warehouse.Id} can not handle demand.");
+                    }
                 }
             }
+            // clear demands after processing
+            // TODO: check if it is a good idea to keep demnds for next turn
+            warehouse.Demands.Clear();
         }
-    }*/
+    }
 }

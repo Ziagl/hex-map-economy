@@ -144,7 +144,38 @@ public sealed class EconomyManagerTests
     [TestMethod]
     public void WarehousesHandleDemands()
     {
-        // TODO
+        var manager = new EconomyManager(GenerateFactoryTypes());
+        // warehouse
+        var position = new CubeCoordinates(0, 0, 0);
+        int ownerId = 1;
+        bool success = manager.CreateWarehouse(position, ownerId, 10);
+        Assert.IsTrue(success, "Warehouse 1 should be created successfully.");
+        var warehouse1 = manager.GetWarehouseByPosition(position);
+        Assert.IsNotNull(warehouse1, "Warehouse 1 should be found by position.");
+        position = new CubeCoordinates(2, 0, -2);
+        success = manager.CreateWarehouse(position, ownerId, 10);
+        Assert.IsTrue(success, "Warehouse 2 should be created successfully.");
+        var warehouse2 = manager.GetWarehouseByPosition(position);
+        Assert.IsNotNull(warehouse2, "Warehouse 2 should be found by position.");
+        // factories
+        position = new CubeCoordinates(-1, 1, 0);
+        int type = LUMBERJACK;
+        success = manager.CreateFactory(position, type, ownerId, warehouse1);
+        var generator = manager.GetFactoriesByPosition(position).First();
+        Assert.IsTrue(success, "Factory (generator) should be created successfully.");
+        position = new CubeCoordinates(1, 1, -2);
+        type = SAWMILL;
+        success = manager.CreateFactory(position, type, ownerId, warehouse2);
+        Assert.IsTrue(success, "Factory (producer) should be created successfully.");
+        var factory = manager.GetFactoriesByPosition(position).First();
+        // transportation tests
+        manager.ProcessFactories(); // process factories to generate assets
+        Assert.AreEqual(0, warehouse1.Stock.Assets.Count, "Stock of Warehouse 1 should be empty.");
+        Assert.AreEqual(1, warehouse2.Stock.Assets.Count, "Stock of Warehouse 2 should not be empty.");
+        Assert.AreEqual(1, warehouse2.Stock.Assets.First().Type, "Asset has to be of type 1.");
+        manager.ProcessFactories(); // process factories to generate assets
+        Assert.AreEqual(0, warehouse1.Stock.Assets.Count, "Stock of Warehouse 1 should be empty.");
+        Assert.AreEqual(2, warehouse2.Stock.Assets.Count, "Stock of Warehouse 2 should not be empty.");
     }
 
     private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 1)
