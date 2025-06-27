@@ -1,5 +1,6 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
 using HexMapEconomy.Models;
+using System.Security.AccessControl;
 
 namespace HexMapEconomy;
 
@@ -50,7 +51,7 @@ public class EconomyManager
     /// <param name="type">Type of created Factory.</param>
     /// <param name="ownerId">The owner of this Factory.</param>
     /// <returns>true if Factory was created successfully, otherwise false.</returns>
-    public bool CreateFactory(CubeCoordinates position, int type, int ownerId, Warehouse warehouse, int stockLimit = 0, int areaOfInfluence = 0)
+    public bool CreateFactory(CubeCoordinates position, int type, int ownerId, Warehouse warehouse)
     {
         // early exit
         if (!_recipeStore.ContainsKey(type))
@@ -61,7 +62,7 @@ public class EconomyManager
         {
             return false;   // owner of factory must be the same as owner of warehouse
         }
-        var factory = new Factory(_recipeStore[type], position, type, ownerId, warehouse, stockLimit, areaOfInfluence);
+        var factory = new Factory(_recipeStore[type], position, type, ownerId, warehouse);
         _factoryStore[factory.Id] = factory;
         return true;
     }
@@ -117,48 +118,77 @@ public class EconomyManager
     /// </summary>
     public void ProcessFactories()
     {
-        // Cache factories to avoid multiple enumerations
+        // cache factories to avoid multiple enumerations
         var factories = _factoryStore.Values.ToList();
 
-        // Group factories by owner once
+        // group factories by owner once
         var factoriesByOwner = factories
             .GroupBy(factory => factory.OwnerId)
             .ToDictionary(g => g.Key, g => g.ToList());
 
-        // Process each asset that is transported to the factory
-        foreach (var factory in factories)
+        // producers (factory with inputs like a sawmill)
+        var producers = factories
+                .Where(f => f.Recipe.Inputs != null &&
+                            f.Recipe.Inputs.Count > 0 &&
+                            f.Warehouse.Stock.StockLimit > 0)
+                .ToList();
+
+        // generators (factory with no inputs, like a lumberjack or mine)
+        var generators = factories
+                .Where(f => f.Recipe.Inputs == null ||
+                       f.Recipe.Inputs.Count == 0)
+                .ToList();
+
+        // group warehouses to avoid multiple enumerations
+        var warehouses = _warehouseStore.Values.ToList();
+
+        // group warehouses by owner
+        var warehousesByOwner = warehouses
+            .GroupBy(warehouse => warehouse.OwnerId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        // Process each asset that is currently in transportation
+        foreach (var warehouse in warehouses)
         {
-            foreach (var asset in factory.InputStock.Assets)
+            foreach (var asset in warehouse.Stock.Assets)
             {
                 asset.Process();
             }
         }
 
         // Process the production of each factory
-        foreach (var factory in factories)
+        // 1. producers
+        foreach (var factory in producers)
+        {
+            factory.Process();
+        }
+        // 2. generators
+        // so that Assets lasts at least one turn in stock
+        foreach (var factory in generators)
         {
             factory.Process();
         }
 
-        foreach(var ownerFactories in factoriesByOwner.Values)
+        foreach (var ownerFactories in factoriesByOwner.Values)
         {
+            // generate demands for all factories and add it to the warehouse
+            CreateFactoryDemands(ownerFactories);
+
             // Process the outputs to be transported further, once per owner
-            ProcessFactoryOutputs(ownerFactories);
+            //ProcessFactoryOutputs(ownerFactories);
         }
     }
 
-    // all outputstock assets should be transported to next factory inputstock
-    private void ProcessFactoryOutputs(List<Factory> factories)
+    private void CreateFactoryDemands(List<Factory> factories)
     {
         // producers ( factory with inputs like a sawmill)
         var producers = factories
                 .Where(f => f.Recipe.Inputs != null &&
                             f.Recipe.Inputs.Count > 0 &&
-                            f.InputStock.StockLimit > 0)
+                            f.Warehouse.Stock.StockLimit > 0)
                 .ToList();
 
         // generate a list of needed ingredients
-        var demands = new List<Demand>();
         foreach (var producer in producers)
         {
             Dictionary<int, int> calculatedMaxAmount = new();
@@ -166,24 +196,24 @@ public class EconomyManager
             // storage needed to produce one output
             int totalInputPerCycle = producer.Recipe.Inputs.Sum(x => x.Amount);
             // max possible cycles that fit in stock
-            int maxCycles = producer.InputStock.StockLimit / totalInputPerCycle;
+            int maxCycles = producer.Warehouse.Stock.StockLimit / totalInputPerCycle;
             // remainder space for this ingredient
-            int remainder = producer.InputStock.StockLimit % totalInputPerCycle;
+            int remainder = producer.Warehouse.Stock.StockLimit % totalInputPerCycle;
             foreach (var input in producer.Recipe.Inputs)
             {
                 // max amount for this ingredient: cycles * amount per cycle + min(remainder, amount per cycle)
                 calculatedMaxAmount[input.Type] = (maxCycles * input.Amount) + Math.Min(remainder, input.Amount);
             }
-            
+
             // create maximum demand to fill the stock
             foreach (var input in producer.Recipe.Inputs)
             {
-                int currentAmount = producer.InputStock.GetCount(input.Type);
+                int currentAmount = producer.Warehouse.Stock.GetCount(input.Type);
                 int missingAmount = calculatedMaxAmount[input.Type] - currentAmount;
                 if (missingAmount > 0)
                 {
                     // Add a demand for the missing amount of this ingredient
-                    demands.Add(new Demand(
+                    producer.Warehouse.AddDemand(new Demand(
                         producer,
                         new RecipeIngredient()
                         {
@@ -194,7 +224,11 @@ public class EconomyManager
                 }
             }
         }
+    }
 
+    // all outputstock assets should be transported to next factory inputstock
+    /*private void ProcessFactoryOutputs(List<Factory> factories)
+    {
         // try to fulfill demands
         foreach (var demand in demands)
         {
@@ -208,7 +242,7 @@ public class EconomyManager
             {
                 // get the maximum amount of demand that this factory can handle
                 int possibleAmount = Math.Min(
-                    factory.OutputStock.GetCount(demand.Ingredient.Type),
+                    factory.Warehouse.Stock.GetCount(demand.Ingredient.Type),
                     demand.Ingredient.Amount);
 
                 if (possibleAmount == 0)
@@ -217,10 +251,10 @@ public class EconomyManager
                 }
 
                 // get assets from factory
-                var assets = factory.OutputStock.Take(demand.Ingredient.Type, possibleAmount);
+                var assets = factory.Warehouse.Stock.Take(demand.Ingredient.Type, possibleAmount);
 
                 // check if demand factory can handle this input
-                if(demand.Factory.InputStock.GetCount(demand.Ingredient.Type) + assets.Count > demand.Factory.InputStock.StockLimit)
+                if(demand.Factory.Warehouse.Stock.GetCount(demand.Ingredient.Type) + assets.Count > demand.Factory.Warehouse.Stock.StockLimit)
                 {
                     throw new Exception($"Factory {demand.Factory.Id} can not handle demand.");
                 }
@@ -239,7 +273,7 @@ public class EconomyManager
                 }
 
                 // add assets to factory with demand
-                var addedAssets = demand.Factory.InputStock.AddRange(assets);
+                var addedAssets = demand.Factory.Warehouse.Stock.AddRange(assets);
 
                 if(addedAssets != assets.Count)
                 {
@@ -254,5 +288,5 @@ public class EconomyManager
                 }
             }
         }
-    }
+    }*/
 }

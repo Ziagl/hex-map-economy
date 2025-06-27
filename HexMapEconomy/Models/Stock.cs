@@ -11,6 +11,14 @@ public class Stock
     }
 
     /// <summary>
+    /// Removes all assets from the stock.
+    /// </summary>
+    public void Clear()
+    {
+        Assets.Clear();
+    }
+
+    /// <summary>
     /// Gets the number of assets of a certain type.
     /// </summary>
     public int GetCount(int type)

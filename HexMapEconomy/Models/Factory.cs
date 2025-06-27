@@ -7,23 +7,17 @@ public class Factory : EconomyBase
 {
     public CubeCoordinates Position { get; init; }  // map position of this factory
     public Recipe Recipe { get; init; }             // recipe defines of this factory works
-    public Stock InputStock { get; } = new();       // limited input stock
-    public Stock OutputStock { get; } = new();      // limited output stock for one production cycle
-    public int AreaOfInfluence { get; init; }       // the area (max distance) for which input assets are transported directly without time loss
     public Warehouse Warehouse { get; init; }
 
     // statistic information about the factory
     public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
     private readonly Queue<int> _lastTenTurnsOutput = new(10);
 
-    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, Warehouse warehouse, int stockLimit = 0, int areaOfInfluence = 0) : base(type,ownerId)
+    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, Warehouse warehouse) : base(type,ownerId)
     {
         Position = position;
         Recipe = recipe;
         Warehouse = warehouse;
-        InputStock = new Stock(stockLimit);
-        OutputStock = new Stock(recipe.Outputs.Sum(output => output.Amount));
-        AreaOfInfluence = areaOfInfluence;
     }
 
     /// <summary>
@@ -46,24 +40,31 @@ public class Factory : EconomyBase
             // only if all inputs are available
             success = Recipe.Inputs.All(input =>
             {
-                var assets = InputStock.Assets.Where(s => s.Type == input.Type && s.IsAvailable).ToList();
+                var assets = Warehouse.Stock.Assets.Where(s => s.Type == input.Type && s.IsAvailable).ToList();
                 return assets.Count() >= input.Amount;
             });
 
             if (success)
             {
+                List<Asset> takenAssets = new List<Asset>();
                 // consume the required inputs from stock
                 foreach (var input in Recipe.Inputs)
                 {
-                    var takenEntries = InputStock.Take(input.Type, input.Amount);
+                    var takenEntries = Warehouse.Stock.Take(input.Type, input.Amount);
                     // Only proceed if the required amount was actually taken
                     if (takenEntries.Count == 0)
                     {
                         success = false;
-                        break;
+                        Warehouse.Demands.Add(new Demand(this, input));
                     }
-                    // from here taken stock entries are not needed anymore
+                    takenAssets.AddRange(takenEntries);
                 }
+                // move all taken assets back to the warehouse store
+                if (success == false)
+                {
+                    Warehouse.Stock.AddRange(takenAssets);
+                }
+                // from here taken stock entries are not needed anymore
             }
         }
 
@@ -76,7 +77,7 @@ public class Factory : EconomyBase
                 {
                     var asset = new Asset(Position, output.Type, OwnerId, generator);
                     // adds as much assets to stock as possible
-                    success = OutputStock.Add(asset);
+                    success = Warehouse.Stock.Add(asset);
                 }
             });
         }
