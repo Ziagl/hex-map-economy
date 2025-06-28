@@ -81,4 +81,21 @@ public class Stock
 
         return assetsOfType;
     }
+
+    /// <summary>
+    /// Checks if given dictionary of assets is available in the stock.
+    /// </summary>
+    /// <param name="assets">A dictionary of assets types and amounts needed.</param>
+    /// <returns>true if all assets are available in given amount, otherwise false.</returns>
+    public bool Has(Dictionary<int, int> assets)
+    {
+        foreach (var asset in assets)
+        {
+            if (GetCount(asset.Key) < asset.Value)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
 }

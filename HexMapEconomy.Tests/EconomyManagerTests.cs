@@ -96,6 +96,10 @@ public sealed class EconomyManagerTests
         var factory = manager.GetFactoriesByPosition(position).First();
         int added = factory.Warehouse.Stock.AddRange(CreateAssets(1, 3, position, ownerId));
         Assert.AreEqual(3, added, "Factory should accept wood into stock.");
+        success = factory.Warehouse.Stock.Has(new Dictionary<int, int> { { 1, 3 } });
+        Assert.IsTrue(success, "Factory stock should have 3 wood.");
+        success = factory.Warehouse.Stock.Has(new Dictionary<int, int> { { 2, 1 } });
+        Assert.IsFalse(success, "Factory stock should not have any planks.");
         added = factory.Warehouse.Stock.AddRange(CreateAssets(2, 1, position, ownerId));
         Assert.AreEqual(1, added, "Factory should accept mixed stock.");
         manager.ProcessFactories(); // process factory to make assets available
