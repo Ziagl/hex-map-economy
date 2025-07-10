@@ -47,6 +47,15 @@ public class EconomyManager
         => _warehouseStore.Values.FirstOrDefault(warehouse => warehouse.Position.Equals(position));
 
     /// <summary>
+    /// Retrieves a list of warehouses owned by the specified owner id.
+    /// </summary>
+    /// <param name="ownerId">The unique identifier of the owner whose warehouses are to be retrieved.</param>
+    /// <returns>A list of <see cref="Warehouse"/> objects owned by the specified owner. Returns an empty list if the owner
+    /// owns no warehouses.</returns>
+    public List<Warehouse> GetWarehousesByOwner(int ownerId)
+        => _warehouseStore.Values.Where(warehouse => warehouse.OwnerId == ownerId).ToList();
+
+    /// <summary>
     /// Creates a new <see cref="Factory"/> at the given position with the specified type and owner.
     /// </summary>
     /// <param name="position">Coordinates where Factory is created.</param>
@@ -181,6 +190,59 @@ public class EconomyManager
         }
     }
 
+    /// <summary>
+    /// Estimates the estimated delivery time for a set of required ingredients to a specified position.
+    /// </summary>
+    /// <param name="requredIngredients">A list of ingredients required for the recipe. Cannot be null or empty.</param>
+    /// <param name="position">The target position represented by cube coordinates where the ingredients need to be delivered.</param>
+    /// <returns>The estimated delivery time in minutes.</returns>
+    public int EstimateDeliveryTime(List<RecipeIngredient> requredIngredients, int ownerId, CubeCoordinates position)
+    {
+        int maxTurns = 0;
+        var warehouses = GetWarehousesByOwner(ownerId);
+
+        // sort warehouses by distance to the target position
+        var sortedWarehouses = warehouses
+            .OrderBy(w => w.Position.DistanceTo(position))
+            .ToList();
+
+        foreach (var ingredient in requredIngredients)
+        {
+            int needed = ingredient.Amount;
+            int farthestDistance = 0;
+            foreach (var warehouse in sortedWarehouses)
+            {
+                int available = warehouse.Stock.GetCount(ingredient.Type);
+                if (available > 0)
+                {
+                    int take = Math.Min(needed, available);
+                    int distance = warehouse.Position.DistanceTo(position);
+                    if (distance > farthestDistance)
+                    {
+                        farthestDistance = distance;
+                    }
+                    needed -= take;
+                    if (needed == 0)
+                    {
+                        break;
+                    }
+                }
+            }
+            if (needed > 0)
+            {
+                // If not enough assets found, farthestDistance will be from the last warehouse checked
+                // If needed > 0, we still use the farthestDistance found so far (could be 0 if none found)
+                int turns = CalculateTurnDistance(farthestDistance);
+                if (turns > maxTurns)
+                {
+                    maxTurns = turns;
+                }
+            }
+        }
+
+        return maxTurns;
+    }
+
     private void CreateFactoryDemands(List<Factory> factories)
     {
         // producers ( factory with inputs like a sawmill)
@@ -260,11 +322,9 @@ public class EconomyManager
                         // adjust assets
                         foreach (var asset in assets)
                         {
-                            float turns = (float)distance / _transportationPerTurn;
-                            int distanceInTurns = (int)Math.Ceiling(turns);
                             asset.InitializeTransport(
                                 warehouse.Position,
-                                distanceInTurns);
+                               CalculateTurnDistance(distance));
                         }
                         // add assets to warehouse with demand
                         var addedAssets = warehouse.Stock.AddRange(assets);
@@ -289,5 +349,10 @@ public class EconomyManager
             // TODO: check if it is a good idea to keep demnds for next turn
             warehouse.Demands.Clear();
         }
+    }
+
+    private int CalculateTurnDistance(int distance)
+    {
+        return (int)Math.Ceiling((float)distance / _transportationPerTurn);
     }
 }

@@ -182,6 +182,12 @@ public sealed class EconomyManagerTests
         Assert.AreEqual(2, warehouse2.Stock.Assets.Count, "Stock of Warehouse 2 should not be empty.");
     }
 
+    [TestMethod]
+    public void EstimateDeliveryTime()
+    {
+
+    }
+
     private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 1)
     {
         var assets = new List<Asset>();
