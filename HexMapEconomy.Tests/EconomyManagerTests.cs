@@ -185,7 +185,34 @@ public sealed class EconomyManagerTests
     [TestMethod]
     public void EstimateDeliveryTime()
     {
-
+        var manager = new EconomyManager(GenerateFactoryTypes());
+        // add 3 warehouses with different distances to first warehouse
+        var position1 = new CubeCoordinates(0, 0, 0);
+        int ownerId = 1;
+        bool success = manager.CreateWarehouse(position1, ownerId, 10);
+        Assert.IsTrue(success, "Warehouse 1 should be created successfully.");
+        var warehouse1 = manager.GetWarehouseByPosition(position1);
+        Assert.IsNotNull(warehouse1, "Warehouse 1 should be found by position.");
+        warehouse1.Stock.AddRange(CreateAssets(1, 1, position1, ownerId));
+        var position2 = new CubeCoordinates(5, 0, -5);
+        success = manager.CreateWarehouse(position2, ownerId, 10);
+        Assert.IsTrue(success, "Warehouse 2 should be created successfully.");
+        var warehouse2 = manager.GetWarehouseByPosition(position2);
+        Assert.IsNotNull(warehouse2, "Warehouse 2 should be found by position.");
+        warehouse2.Stock.AddRange(CreateAssets(1, 1, position2, ownerId));
+        var position3 = new CubeCoordinates(10, 0, -10);
+        success = manager.CreateWarehouse(position3, ownerId, 10);
+        Assert.IsTrue(success, "Warehouse 3 should be created successfully.");
+        var warehouse3 = manager.GetWarehouseByPosition(position3);
+        Assert.IsNotNull(warehouse3, "Warehouse 3 should be found by position.");
+        warehouse3.Stock.AddRange(CreateAssets(1, 1, position3, ownerId));
+        // test delivery time estimation
+        int turns = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 } }, ownerId, position1);
+        Assert.IsTrue(0 == turns, "Delivery time for 1 asset should be 0 turns.");
+        turns = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 2 } }, ownerId, position1);
+        Assert.IsTrue(1 == turns, "Delivery time for 1 asset should be 1 turn.");
+        turns = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 3 } }, ownerId, position1);
+        Assert.IsTrue(2 == turns, "Delivery time for 1 asset should be 2 turns.");
     }
 
     private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 1)

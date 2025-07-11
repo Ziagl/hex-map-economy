@@ -220,7 +220,7 @@ public class EconomyManager
                     if (distance > farthestDistance)
                     {
                         farthestDistance = distance;
-                    }
+                    }  
                     needed -= take;
                     if (needed == 0)
                     {
@@ -228,10 +228,8 @@ public class EconomyManager
                     }
                 }
             }
-            if (needed > 0)
+            if (needed == 0)
             {
-                // If not enough assets found, farthestDistance will be from the last warehouse checked
-                // If needed > 0, we still use the farthestDistance found so far (could be 0 if none found)
                 int turns = CalculateTurnDistance(farthestDistance);
                 if (turns > maxTurns)
                 {
