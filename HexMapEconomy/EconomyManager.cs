@@ -195,11 +195,12 @@ public class EconomyManager
     /// </summary>
     /// <param name="requredIngredients">A list of ingredients required for the recipe. Cannot be null or empty.</param>
     /// <param name="position">The target position represented by cube coordinates where the ingredients need to be delivered.</param>
-    /// <returns>The estimated delivery time in minutes.</returns>
-    public int EstimateDeliveryTime(List<RecipeIngredient> requredIngredients, int ownerId, CubeCoordinates position)
+    /// <returns>The estimated delivery time in turns for every type of ingredient and a max turn. -1 if it is not possible to deliver.</returns>
+    public RecipeIngredientsAvailability EstimateDeliveryTime(List<RecipeIngredient> requredIngredients, int ownerId, CubeCoordinates position)
     {
         int maxTurns = 0;
         var warehouses = GetWarehousesByOwner(ownerId);
+        RecipeIngredientsAvailability availability = new();
 
         // sort warehouses by distance to the target position
         var sortedWarehouses = warehouses
@@ -231,14 +232,22 @@ public class EconomyManager
             if (needed == 0)
             {
                 int turns = CalculateTurnDistance(farthestDistance);
-                if (turns > maxTurns)
+                if (turns > maxTurns && maxTurns != -1)
                 {
                     maxTurns = turns;
                 }
+                availability.AvailabilityDetails.Add(new Tuple<int, int>(ingredient.Type, turns));
+            }
+            else
+            {
+                maxTurns = -1;
+                availability.AvailabilityDetails.Add(new Tuple<int, int>(ingredient.Type, maxTurns));
             }
         }
 
-        return maxTurns;
+        availability.Turns = maxTurns;
+
+        return availability;
     }
 
     private void CreateFactoryDemands(List<Factory> factories)
