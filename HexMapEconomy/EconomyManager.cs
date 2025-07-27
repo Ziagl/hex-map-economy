@@ -236,12 +236,12 @@ public class EconomyManager
                 {
                     maxTurns = turns;
                 }
-                availability.AvailabilityDetails.Add(new Tuple<int, int>(ingredient.Type, turns));
+                availability.AvailabilityDetails.Add(new IngredientAvailability() { Type = ingredient.Type, Turns = turns });
             }
             else
             {
                 maxTurns = -1;
-                availability.AvailabilityDetails.Add(new Tuple<int, int>(ingredient.Type, maxTurns));
+                availability.AvailabilityDetails.Add(new IngredientAvailability() { Type = ingredient.Type, Turns = maxTurns });
             }
         }
 

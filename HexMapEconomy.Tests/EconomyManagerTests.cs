@@ -209,17 +209,17 @@ public sealed class EconomyManagerTests
         // test delivery time estimation
         var availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 } }, ownerId, position1);
         Assert.IsTrue(0 == availability.Turns, "Delivery time for 1 asset should be 0 turns.");
-        Assert.IsTrue(0 == availability.AvailabilityDetails[0].Item2, "Delivery time for first asset should be 0 turns.");
+        Assert.IsTrue(0 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
         availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 2 } }, ownerId, position1);
         Assert.IsTrue(1 == availability.Turns, "Delivery time for 1 asset should be 1 turn.");
-        Assert.IsTrue(1 == availability.AvailabilityDetails[0].Item2, "Delivery time for first asset should be 1 turn.");
+        Assert.IsTrue(1 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 1 turn.");
         availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 3 } }, ownerId, position1);
         Assert.IsTrue(2 == availability.Turns, "Delivery time for 1 asset should be 2 turns.");
-        Assert.IsTrue(2 == availability.AvailabilityDetails[0].Item2, "Delivery time for first asset should be 2 turns.");
+        Assert.IsTrue(2 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 2 turns.");
         availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 }, new RecipeIngredient() { Type = 2, Amount = 1 } }, ownerId, position1);
         Assert.IsTrue(-1 == availability.Turns, "Delivery time for 1 asset should be -1 turns, because it is not available.");
-        Assert.IsTrue(0 == availability.AvailabilityDetails[0].Item2, "Delivery time for first asset should be 0 turns.");
-        Assert.IsTrue(-1 == availability.AvailabilityDetails[1].Item2, "Delivery time for second asset should be -1 turns, because it is not available.");
+        Assert.IsTrue(0 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
+        Assert.IsTrue(-1 == availability.AvailabilityDetails[1].Turns, "Delivery time for second asset should be -1 turns, because it is not available.");
     }
 
     private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 1)
