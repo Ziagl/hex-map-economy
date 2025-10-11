@@ -1,4 +1,6 @@
-﻿namespace HexMapEconomy.Models;
+﻿using System.Text.Json;
+
+namespace HexMapEconomy.Models;
 
 public class Stock
 {
@@ -92,10 +94,57 @@ public class Stock
         foreach (var asset in assets)
         {
             if (GetCount(asset.Key) < asset.Value)
-            {
                 return false;
-            }
         }
         return true;
+    }
+
+    // ------------------ Serialization ------------------
+
+    private sealed class StockState
+    {
+        public int StockLimit { get; set; }
+        public List<Asset> Assets { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Serialize this stock (including contained assets) to JSON.
+    /// </summary>
+    public string ToJson(JsonSerializerOptions? options = null)
+    {
+        options ??= Utils.CreateDefaultJsonOptions();
+        var state = new StockState
+        {
+            StockLimit = StockLimit,
+            Assets = Assets.Select(a => new Asset(
+                a.Id,
+                a.Position,
+                a.Type,
+                a.OwnerId,
+                a.TurnsUntilAvailable,
+                a.IsAvailable)).ToList()
+        };
+        return JsonSerializer.Serialize(state, options);
+    }
+
+    /// <summary>
+    /// Deserialize JSON into a new Stock instance (recreates asset objects).
+    /// </summary>
+    public static Stock FromJson(string json, JsonSerializerOptions? options = null)
+    {
+        options ??= Utils.CreateDefaultJsonOptions();
+        var state = JsonSerializer.Deserialize<StockState>(json, options)
+            ?? throw new InvalidOperationException("Failed to deserialize Stock.");
+
+        var stock = new Stock(state.StockLimit);
+
+        foreach (var a in state.Assets)
+        {
+            // Uses the internal Asset(Guid, ...) constructor (present per provided signatures)
+            var asset = new Asset(a.Id, a.Position, a.Type, a.OwnerId, a.TurnsUntilAvailable, a.IsAvailable);
+            stock.Assets.Add(asset);
+        }
+
+        return stock;
     }
 }

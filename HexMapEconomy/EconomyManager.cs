@@ -1,6 +1,5 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
 using HexMapEconomy.Models;
-using System.Security.AccessControl;
 
 namespace HexMapEconomy;
 
@@ -353,7 +352,7 @@ public class EconomyManager
                 }
             }
             // clear demands after processing
-            // TODO: check if it is a good idea to keep demnds for next turn
+            // TODO: check if it is a good idea to keep demands for next turn
             warehouse.Demands.Clear();
         }
     }
