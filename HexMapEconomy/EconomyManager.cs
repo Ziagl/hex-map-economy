@@ -55,6 +55,15 @@ public class EconomyManager
         => _warehouseStore.Values.Where(warehouse => warehouse.OwnerId == ownerId).ToList();
 
     /// <summary>
+    /// Retrieves a warehouse by its unique identifier or null if there is none.
+    /// </summary>
+    /// <param name="warehouseId">Guid of searched warehouse.</param>
+    /// <exception cref="Exception">Thrown when no warehouse was found with the given GUID.</exception>
+    /// <returns>Warehouse object or null if no warehouse exists with given GUID.</returns>
+    public Warehouse GetWarehouseById(Guid warehouseId)
+        => _warehouseStore.TryGetValue(warehouseId, out var warehouse) ? warehouse : throw new Exception("No Warehouse with this guid found.");
+
+    /// <summary>
     /// Creates a new <see cref="Factory"/> at the given position with the specified type and owner.
     /// </summary>
     /// <param name="position">Coordinates where Factory is created.</param>
@@ -140,7 +149,7 @@ public class EconomyManager
         var producers = factories
                 .Where(f => f.Recipe.Inputs != null &&
                             f.Recipe.Inputs.Count > 0 &&
-                            f.Warehouse.Stock.StockLimit > 0)
+                            _warehouseStore[f.WarehouseId].Stock.StockLimit > 0)
                 .ToList();
 
         // generators (factory with no inputs, like a lumberjack or mine)
@@ -170,13 +179,13 @@ public class EconomyManager
         // 1. producers
         foreach (var factory in producers)
         {
-            factory.Process();
+            factory.Process(_warehouseStore[factory.WarehouseId]);
         }
         // 2. generators
         // so that Assets lasts at least one turn in stock
         foreach (var factory in generators)
         {
-            factory.Process();
+            factory.Process(_warehouseStore[factory.WarehouseId]);
         }
 
         foreach (var ownerFactories in factoriesByOwner.Values)
@@ -255,7 +264,7 @@ public class EconomyManager
         var producers = factories
                 .Where(f => f.Recipe.Inputs != null &&
                             f.Recipe.Inputs.Count > 0 &&
-                            f.Warehouse.Stock.StockLimit > 0)
+                            _warehouseStore[f.WarehouseId].Stock.StockLimit > 0)
                 .ToList();
 
         // generate a list of needed ingredients
@@ -266,9 +275,9 @@ public class EconomyManager
             // storage needed to produce one output
             int totalInputPerCycle = producer.Recipe.Inputs.Sum(x => x.Amount);
             // max possible cycles that fit in stock
-            int maxCycles = producer.Warehouse.Stock.StockLimit / totalInputPerCycle;
+            int maxCycles = _warehouseStore[producer.WarehouseId].Stock.StockLimit / totalInputPerCycle;
             // remainder space for this ingredient
-            int remainder = producer.Warehouse.Stock.StockLimit % totalInputPerCycle;
+            int remainder = _warehouseStore[producer.WarehouseId].Stock.StockLimit % totalInputPerCycle;
             foreach (var input in producer.Recipe.Inputs)
             {
                 // max amount for this ingredient: cycles * amount per cycle + min(remainder, amount per cycle)
@@ -278,12 +287,12 @@ public class EconomyManager
             // create maximum demand to fill the stock
             foreach (var input in producer.Recipe.Inputs)
             {
-                int currentAmount = producer.Warehouse.Stock.GetCount(input.Type);
+                int currentAmount = _warehouseStore[producer.WarehouseId].Stock.GetCount(input.Type);
                 int missingAmount = calculatedMaxAmount[input.Type] - currentAmount;
                 if (missingAmount > 0)
                 {
                     // Add a demand for the missing amount of this ingredient
-                    producer.Warehouse.AddDemand(new Demand(
+                    _warehouseStore[producer.WarehouseId].AddDemand(new Demand(
                         producer,
                         new RecipeIngredient()
                         {

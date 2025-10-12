@@ -68,10 +68,10 @@ public sealed class EconomyManagerTests
         success = manager.CreateFactory(position, type, ownerId, warehouse);
         Assert.IsTrue(success, "Factory should be created successfully.");
         factory = manager.GetFactoriesByPosition(position).First();
-        factory.Warehouse.Stock.Clear();
+        manager.GetWarehouseById(factory.WarehouseId).Stock.Clear();
         manager.ProcessFactories();
         Assert.AreEqual(0, factory.Productivity, "Factory should not produce output without input.");
-        success = factory.Warehouse.Stock.Add(CreateAssets(1, 1, position, ownerId).First()); // add wood to stock
+        success = manager.GetWarehouseById(factory.WarehouseId).Stock.Add(CreateAssets(1, 1, position, ownerId).First()); // add wood to stock
         Assert.IsTrue(success, "Wood should be added to factory stock.");
         manager.ProcessFactories();
         Assert.AreEqual(0.5f, factory.Productivity, "Factory should have produced one output.");
@@ -94,20 +94,20 @@ public sealed class EconomyManagerTests
         success = manager.CreateFactory(position, type, ownerId, warehouse);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = manager.GetFactoriesByPosition(position).First();
-        int added = factory.Warehouse.Stock.AddRange(CreateAssets(1, 3, position, ownerId));
+        int added = manager.GetWarehouseById(factory.WarehouseId).Stock.AddRange(CreateAssets(1, 3, position, ownerId));
         Assert.AreEqual(3, added, "Factory should accept wood into stock.");
-        success = factory.Warehouse.Stock.Has(new Dictionary<int, int> { { 1, 3 } });
+        success = manager.GetWarehouseById(factory.WarehouseId).Stock.Has(new Dictionary<int, int> { { 1, 3 } });
         Assert.IsTrue(success, "Factory stock should have 3 wood.");
-        success = factory.Warehouse.Stock.Has(new Dictionary<int, int> { { 2, 1 } });
+        success = manager.GetWarehouseById(factory.WarehouseId).Stock.Has(new Dictionary<int, int> { { 2, 1 } });
         Assert.IsFalse(success, "Factory stock should not have any planks.");
-        added = factory.Warehouse.Stock.AddRange(CreateAssets(2, 1, position, ownerId));
+        added = manager.GetWarehouseById(factory.WarehouseId).Stock.AddRange(CreateAssets(2, 1, position, ownerId));
         Assert.AreEqual(1, added, "Factory should accept mixed stock.");
         manager.ProcessFactories(); // process factory to make assets available
-        var entries = factory.Warehouse.Stock.Take(3, 2);
+        var entries = manager.GetWarehouseById(factory.WarehouseId).Stock.Take(3, 2);
         Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries that do not exist.");
-        entries = factory.Warehouse.Stock.Take(2, 4);
+        entries =  manager.GetWarehouseById(factory.WarehouseId).Stock.Take(2, 4);
         Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries if the requested amount is not available.");
-        entries = factory.Warehouse.Stock.Take(1, 2); // only get 2, because ProcessFactories also consumes one of 3 in store!
+        entries = manager.GetWarehouseById(factory.WarehouseId).Stock.Take(1, 2); // only get 2, because ProcessFactories also consumes one of 3 in store!
         Assert.IsTrue(entries.Count == 2 && entries.All(x => x.Type == 1), "Factory should take stock entries that exist and have enough amount.");
     }
 
@@ -137,12 +137,12 @@ public sealed class EconomyManagerTests
         // compute 1 turn
         // generator creates 1 wood and puts it into stock of warehouse
         manager.ProcessFactories();
-        Assert.AreEqual(1, factory.Warehouse.Stock.Assets.Count, "Factory should have 1 wood in stock after processing.");
+        Assert.AreEqual(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Count, "Factory should have 1 wood in stock after processing.");
         manager.ProcessFactories();
-        Assert.AreEqual(1, factory.Warehouse.Stock.Assets.Where(a => a.Type == 1).ToList().Count, "Factory should have 1 new wood in stock after second processing.");
-        Assert.AreEqual(1, factory.Warehouse.Stock.Assets.Where(a => a.Type == 2).ToList().Count, "Factory should have 1 new plank in stock after second processing.");
+        Assert.AreEqual(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 1).ToList().Count, "Factory should have 1 new wood in stock after second processing.");
+        Assert.AreEqual(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 2).ToList().Count, "Factory should have 1 new plank in stock after second processing.");
         manager.ProcessFactories();
-        Assert.AreEqual(2, factory.Warehouse.Stock.Assets.Where(a => a.Type == 2).ToList().Count, "Factory should have 2 planks in output stock after third processing.");
+        Assert.AreEqual(2, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 2).ToList().Count, "Factory should have 2 planks in output stock after third processing.");
     }
 
     [TestMethod]

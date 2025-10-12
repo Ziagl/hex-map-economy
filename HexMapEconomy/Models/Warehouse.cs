@@ -26,7 +26,7 @@ public class Warehouse : EconomyBase
     /// <returns>true if demand was added, false if factory does not belong to this warehouse.</returns>
     internal bool AddDemand(Demand demand)
     {
-        if (demand.Factory.Warehouse.Id != Id)
+        if (demand.Factory.WarehouseId != Id)
         {
             return false;
         }

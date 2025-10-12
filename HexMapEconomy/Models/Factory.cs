@@ -7,7 +7,7 @@ public class Factory : EconomyBase
 {
     public CubeCoordinates Position { get; init; }  // map position of this factory
     public Recipe Recipe { get; init; }             // recipe defines of this factory works
-    public Warehouse Warehouse { get; init; }
+    public Guid WarehouseId { get; init; }
 
     // statistic information about the factory
     public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
@@ -17,13 +17,13 @@ public class Factory : EconomyBase
     {
         Position = position;
         Recipe = recipe;
-        Warehouse = warehouse;
+        WarehouseId = warehouse.Id;
     }
 
     /// <summary>
     /// Processes the recipe for this factory.
     /// </summary>
-    internal void Process()
+    internal void Process(Warehouse warehouse)
     {
         bool success = false;
         bool generator = Recipe.Inputs.Count == 0;
@@ -40,7 +40,7 @@ public class Factory : EconomyBase
             // only if all inputs are available
             success = Recipe.Inputs.All(input =>
             {
-                var assets = Warehouse.Stock.Assets.Where(s => s.Type == input.Type && s.IsAvailable).ToList();
+                var assets = warehouse.Stock.Assets.Where(s => s.Type == input.Type && s.IsAvailable).ToList();
                 return assets.Count() >= input.Amount;
             });
 
@@ -50,19 +50,19 @@ public class Factory : EconomyBase
                 // consume the required inputs from stock
                 foreach (var input in Recipe.Inputs)
                 {
-                    var takenEntries = Warehouse.Stock.Take(input.Type, input.Amount);
+                    var takenEntries = warehouse.Stock.Take(input.Type, input.Amount);
                     // Only proceed if the required amount was actually taken
                     if (takenEntries.Count == 0)
                     {
                         success = false;
-                        Warehouse.Demands.Add(new Demand(this, input));
+                        warehouse.Demands.Add(new Demand(this, input));
                     }
                     takenAssets.AddRange(takenEntries);
                 }
                 // move all taken assets back to the warehouse store
                 if (success == false)
                 {
-                    Warehouse.Stock.AddRange(takenAssets);
+                    warehouse.Stock.AddRange(takenAssets);
                 }
                 // from here taken stock entries are not needed anymore
             }
@@ -77,7 +77,7 @@ public class Factory : EconomyBase
                 {
                     var asset = new Asset(Position, output.Type, OwnerId, generator);
                     // adds as much assets to stock as possible
-                    success = Warehouse.Stock.Add(asset);
+                    success = warehouse.Stock.Add(asset);
                 }
             });
         }
