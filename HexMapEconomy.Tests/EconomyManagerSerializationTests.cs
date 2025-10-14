@@ -17,8 +17,8 @@ public sealed class EconomyManagerSerializationTests
         Assert.IsFalse(string.IsNullOrWhiteSpace(json), "JSON should not be empty.");
 
         // dump this map as JSON to disk
-        var filePath = @"C:\Temp\EconomyManager.json";
-        File.WriteAllText(filePath, json);
+        //var filePath = @"C:\Temp\EconomyManager.json";
+        //File.WriteAllText(filePath, json);
 
         var roundTripped = EconomyManager.FromJson(json);
         Assert.IsNotNull(roundTripped, "Deserialized CityManager should not be null.");
@@ -26,7 +26,7 @@ public sealed class EconomyManagerSerializationTests
         AssertEconomyManagerEqual(economyManager, roundTripped);
     }
 
-    /*[TestMethod]
+    [TestMethod]
     public void SerializationDeserializationBinary()
     {
         var economyManager = new EconomyManager(TestUtils.GenerateFactoryTypes());
@@ -50,7 +50,7 @@ public sealed class EconomyManagerSerializationTests
 
         Assert.IsNotNull(roundTripped, "Binary deserialized EconomyManager should not be null.");
         AssertEconomyManagerEqual(economyManager, roundTripped);
-    }*/
+    }
 
     private void PrepareEconomyManager(EconomyManager manager)
     {

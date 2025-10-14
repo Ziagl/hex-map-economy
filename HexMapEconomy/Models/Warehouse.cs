@@ -40,20 +40,18 @@ public class Warehouse : EconomyBase
     {
         Position = position;
         Stock = stock ?? new Stock(stockLimit);
-        // Demands intentionally left empty; they are transient and (if needed) restored via custom logic.
     }
 
-    /// <summary>
-    /// A factory can add a demand to its warehouse.
-    /// </summary>
-    /// <param name="demand">Demand object represents Asset that is needed but not in stock.</param>
-    /// <returns>true if demand was added, false if factory does not belong to this warehouse.</returns>
+    internal Warehouse(Guid id,
+                       CubeCoordinates position,
+                       int ownerId,
+                       int stockLimit,
+                       Stock stock)
+        : this(id, position, ownerId, stockLimit, 0, stock) { }
+
     internal bool AddDemand(Demand demand)
     {
-        if (demand.Factory.WarehouseId != Id)
-        {
-            return false;
-        }
+        if (demand.Factory.WarehouseId != Id) return false;
         Demands.Add(demand);
         return true;
     }
@@ -102,15 +100,42 @@ public class Warehouse : EconomyBase
                     ?? throw new InvalidOperationException("Invalid Warehouse JSON.");
 
         var stock = Stock.FromJson(state.StockJson, options);
-        var warehouse = new Warehouse(state.Id, state.Position, state.OwnerId, state.StockLimit, type: 0, stock: stock);
+        var warehouse = new Warehouse(state.Id, state.Position, state.OwnerId, state.StockLimit, stock);
 
-        // Recreate demands (skip if resolver returns null -> throw for consistency)
         foreach (var demandJson in state.Demands)
         {
             var demand = Demand.FromJson(demandJson, factoryResolver, options);
             warehouse.Demands.Add(demand);
         }
-
         return warehouse;
+    }
+
+    // -------- Binary --------
+    internal void Write(BinaryWriter writer)
+    {
+        writer.Write(Id.ToByteArray());
+        Position.Write(writer);
+        writer.Write(OwnerId);
+        writer.Write(Stock.StockLimit);
+        Stock.Write(writer);
+        writer.Write(Demands.Count);
+        foreach (var d in Demands)
+            d.Write(writer);
+    }
+
+    internal static Warehouse Read(BinaryReader reader, Func<Guid, Factory?> factoryResolver)
+    {
+        var id = new Guid(reader.ReadBytes(16));
+        var pos = CubeCoordinates.Read(reader);
+        int owner = reader.ReadInt32();
+        int stockLimit = reader.ReadInt32();
+        var stock = Stock.Read(reader);
+        var wh = new Warehouse(id, pos, owner, stockLimit, stock);
+        int demandCount = reader.ReadInt32();
+        for (int i = 0; i < demandCount; i++)
+        {
+            wh.Demands.Add(Demand.Read(reader, factoryResolver));
+        }
+        return wh;
     }
 }

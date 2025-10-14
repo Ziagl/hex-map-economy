@@ -124,4 +124,32 @@ public class Factory : EconomyBase
             _lastTenTurnsOutput.Dequeue();
         _lastTenTurnsOutput.Enqueue(value);
     }
+
+    // -------- Binary --------
+    internal void Write(BinaryWriter writer)
+    {
+        writer.Write(Id.ToByteArray());
+        Position.Write(writer);
+        writer.Write(Type);
+        writer.Write(OwnerId);
+        writer.Write(WarehouseId.ToByteArray());
+        // last 10 outputs
+        var list = _lastTenTurnsOutput.ToList();
+        writer.Write(list.Count);
+        foreach (var v in list) writer.Write(v);
+    }
+
+    internal static Factory Read(BinaryReader reader, Dictionary<int, Recipe> recipeStore)
+    {
+        var id = new Guid(reader.ReadBytes(16));
+        var position = CubeCoordinates.Read(reader);
+        int type = reader.ReadInt32();
+        int owner = reader.ReadInt32();
+        var warehouseId = new Guid(reader.ReadBytes(16));
+        int outputCount = reader.ReadInt32();
+        var outputs = new List<int>(outputCount);
+        for (int i = 0; i < outputCount; i++) outputs.Add(reader.ReadInt32());
+        var factory = new Factory(id, position, recipe: recipeStore[type], type, owner, warehouseId, outputs);
+        return factory;
+    }
 }

@@ -100,4 +100,26 @@ public class Asset : EconomyBase
             state.TurnsUntilAvailable,
             state.IsAvailable);
     }
+
+    // -------- Binary --------
+    internal void Write(BinaryWriter writer)
+    {
+        writer.Write(Id.ToByteArray());
+        _position.Write(writer);
+        writer.Write(Type);
+        writer.Write(OwnerId);
+        writer.Write(_turnsUntilAvailable);
+        writer.Write(_isAvailable);
+    }
+
+    internal static Asset Read(BinaryReader reader)
+    {
+        var id = new Guid(reader.ReadBytes(16));
+        var pos = CubeCoordinates.Read(reader);
+        int type = reader.ReadInt32();
+        int owner = reader.ReadInt32();
+        int turns = reader.ReadInt32();
+        bool available = reader.ReadBoolean();
+        return new Asset(id, pos, type, owner, turns, available);
+    }
 }

@@ -135,16 +135,33 @@ public class Stock
         options ??= Utils.CreateDefaultJsonOptions();
         var state = JsonSerializer.Deserialize<StockState>(json, options)
             ?? throw new InvalidOperationException("Failed to deserialize Stock.");
-
         var stock = new Stock(state.StockLimit);
-
         foreach (var a in state.Assets)
         {
-            // Uses the internal Asset(Guid, ...) constructor (present per provided signatures)
             var asset = new Asset(a.Id, a.Position, a.Type, a.OwnerId, a.TurnsUntilAvailable, a.IsAvailable);
             stock.Assets.Add(asset);
         }
+        return stock;
+    }
 
+    // -------- Binary --------
+    internal void Write(BinaryWriter writer)
+    {
+        writer.Write(StockLimit);
+        writer.Write(Assets.Count);
+        foreach (var a in Assets)
+            a.Write(writer);
+    }
+
+    internal static Stock Read(BinaryReader reader)
+    {
+        int limit = reader.ReadInt32();
+        var stock = new Stock(limit);
+        int count = reader.ReadInt32();
+        for (int i = 0; i < count; i++)
+        {
+            stock.Assets.Add(Asset.Read(reader));
+        }
         return stock;
     }
 }

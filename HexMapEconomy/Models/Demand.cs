@@ -48,11 +48,25 @@ internal class Demand
                     ?? throw new InvalidOperationException("Invalid Demand JSON.");
         var factory = factoryResolver(state.FactoryId)
                       ?? throw new InvalidOperationException($"Factory {state.FactoryId} not found for Demand.");
-        var ingredient = new RecipeIngredient
-        {
-            Type = state.IngredientType,
-            Amount = state.IngredientAmount
-        };
+        var ingredient = new RecipeIngredient { Type = state.IngredientType, Amount = state.IngredientAmount };
         return new Demand(factory, ingredient);
+    }
+
+    // -------- Binary --------
+    internal void Write(BinaryWriter writer)
+    {
+        writer.Write(Factory.Id.ToByteArray());
+        writer.Write(Ingredient.Type);
+        writer.Write(Ingredient.Amount);
+    }
+
+    internal static Demand Read(BinaryReader reader, Func<Guid, Factory?> factoryResolver)
+    {
+        var factoryId = new Guid(reader.ReadBytes(16));
+        int type = reader.ReadInt32();
+        int amount = reader.ReadInt32();
+        var factory = factoryResolver(factoryId)
+            ?? throw new InvalidOperationException($"Factory {factoryId} missing while reading Demand.");
+        return new Demand(factory, new RecipeIngredient { Type = type, Amount = amount });
     }
 }

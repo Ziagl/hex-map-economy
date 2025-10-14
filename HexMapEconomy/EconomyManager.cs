@@ -426,4 +426,75 @@ public class EconomyManager
 
         return manager;
     }
+
+    // -------------------- Binary Serialization --------------------
+    // Version number for format evolution
+    private const int BinaryVersion = 1;
+
+    public void Write(BinaryWriter writer)
+    {
+        // Header
+        writer.Write(BinaryVersion);
+        writer.Write(_transportationPerTurn);
+
+        // Recipes
+        writer.Write(_recipeStore.Count);
+        foreach (var kvp in _recipeStore)
+        {
+            writer.Write(kvp.Key);
+            kvp.Value.Write(writer);
+        }
+
+        // Factories (store count then each)
+        writer.Write(_factoryStore.Count);
+        foreach (var f in _factoryStore.Values)
+            f.Write(writer);
+
+        // Warehouses (after factories so demands can resolve factory refs)
+        writer.Write(_warehouseStore.Count);
+        foreach (var w in _warehouseStore.Values)
+            w.Write(writer);
+    }
+
+    public static EconomyManager Read(BinaryReader reader)
+    {
+        int version = reader.ReadInt32();
+        if (version != BinaryVersion)
+            throw new NotSupportedException($"Unsupported EconomyManager binary version {version}");
+
+        int transportationPerTurn = reader.ReadInt32();
+
+        // Recipes
+        int recipeCount = reader.ReadInt32();
+        var recipes = new Dictionary<int, Recipe>(recipeCount);
+        for (int i = 0; i < recipeCount; i++)
+        {
+            int key = reader.ReadInt32();
+            recipes[key] = Recipe.Read(reader);
+        }
+
+        var manager = new EconomyManager(recipes, transportationPerTurn);
+
+        // Factories
+        int factoryCount = reader.ReadInt32();
+        for (int i = 0; i < factoryCount; i++)
+        {
+            var factory = Factory.Read(reader, manager._recipeStore);
+            manager._factoryStore[factory.Id] = factory;
+        }
+
+        // Warehouses
+        int warehouseCount = reader.ReadInt32();
+        for (int i = 0; i < warehouseCount; i++)
+        {
+            var warehouse = Warehouse.Read(reader, factoryId =>
+            {
+                manager._factoryStore.TryGetValue(factoryId, out var f);
+                return f;
+            });
+            manager._warehouseStore[warehouse.Id] = warehouse;
+        }
+
+        return manager;
+    }
 }
