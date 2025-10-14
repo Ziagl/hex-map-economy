@@ -1,4 +1,4 @@
-﻿namespace HexMapEconomy.Models;
+﻿namespace com.hexagonsimulations.HexMapEconomy.Models;
 
 public class RecipeIngredientsAvailability
 {

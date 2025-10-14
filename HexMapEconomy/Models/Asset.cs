@@ -1,20 +1,22 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 
 [assembly: InternalsVisibleTo("HexMapEconomy.Tests")]
 
-namespace HexMapEconomy.Models;
+namespace com.hexagonsimulations.HexMapEconomy.Models;
 
 // an object that takes part in the economy
 public class Asset : EconomyBase
 {
-    // to transport an Asset to another position
-    public CubeCoordinates Position { get { return _position; } }
+    public CubeCoordinates Position => _position;
     private CubeCoordinates _position;
-    public int TurnsUntilAvailable { get { return _turnsUntilAvailable; } }
+
+    public int TurnsUntilAvailable => _turnsUntilAvailable;
     private int _turnsUntilAvailable;
-    public bool IsAvailable { get { return _isAvailable; } }
+
+    public bool IsAvailable => _isAvailable;
     private bool _isAvailable = false;
 
     internal Asset(CubeCoordinates position, int type, int ownerId, bool rawMaterial = false)
@@ -25,8 +27,13 @@ public class Asset : EconomyBase
         _isAvailable = rawMaterial;
     }
 
-    internal Asset(Guid id, CubeCoordinates position, int type, int ownerId,
-                   int turnsUntilAvailable, bool isAvailable)
+    [JsonConstructor]
+    internal Asset(Guid id,
+                 CubeCoordinates position,
+                 int type,
+                 int ownerId,
+                 int turnsUntilAvailable,
+                 bool isAvailable)
         : base(id, type, ownerId)
     {
         _position = position;
@@ -46,7 +53,6 @@ public class Asset : EconomyBase
         if (_turnsUntilAvailable > 0)
         {
             _turnsUntilAvailable--;
-
             if (_turnsUntilAvailable == 0)
             {
                 _isAvailable = true;
@@ -55,8 +61,6 @@ public class Asset : EconomyBase
     }
 
     // ---------------- Serialization ----------------
-
-    // DTO used for (de)serialization
     private sealed class AssetState
     {
         public Guid Id { get; set; }
@@ -67,9 +71,6 @@ public class Asset : EconomyBase
         public bool IsAvailable { get; set; }
     }
 
-    /// <summary>
-    /// Serialize this Asset to JSON.
-    /// </summary>
     public string ToJson(JsonSerializerOptions? options = null)
     {
         options ??= Utils.CreateDefaultJsonOptions();
@@ -85,16 +86,12 @@ public class Asset : EconomyBase
         return JsonSerializer.Serialize(state, options);
     }
 
-    /// <summary>
-    /// Deserialize JSON into a new Asset instance (preserves original Id).
-    /// </summary>
     public static Asset FromJson(string json, JsonSerializerOptions? options = null)
     {
         options ??= Utils.CreateDefaultJsonOptions();
         var state = JsonSerializer.Deserialize<AssetState>(json, options)
             ?? throw new InvalidOperationException("Failed to deserialize Asset.");
 
-        // rawMaterial logic no longer needed separately: pass state directly
         return new Asset(
             state.Id,
             state.Position,

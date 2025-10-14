@@ -1,7 +1,8 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
-using HexMapEconomy.Models;
+using com.hexagonsimulations.HexMapEconomy.Models;
+using System.Text.Json;
 
-namespace HexMapEconomy;
+namespace com.hexagonsimulations.HexMapEconomy;
 
 /// <summary>
 /// The FactoryManager handles factories on game map and their production processes.
@@ -11,12 +12,21 @@ public class EconomyManager
     private Dictionary<Guid, Factory> _factoryStore = new();
     private Dictionary<Guid, Warehouse> _warehouseStore = new();
     private Dictionary<int, Recipe> _recipeStore = new();
-    // how many tiles an Asset can be transported per turn
-    private readonly int _transportationPerTurn = 5;   // TODO: make this configurable 
+
+    // how many tiles an Asset can be transported per turn (serialized)
+    private int _transportationPerTurn = 5;   // TODO: make this configurable 
+    public int TransportationPerTurn => _transportationPerTurn;
 
     public EconomyManager(Dictionary<int, Recipe> definition)
     {
         _recipeStore = definition;
+    }
+
+    // Internal ctor for deserialization
+    internal EconomyManager(Dictionary<int, Recipe> recipeStore, int transportationPerTurn)
+    {
+        _recipeStore = recipeStore;
+        _transportationPerTurn = transportationPerTurn;
     }
 
     /// <summary>
@@ -307,34 +317,28 @@ public class EconomyManager
 
     private void FulfillFactoryDemands(List<Warehouse> warehouses)
     {
-        foreach(var warehouse in warehouses)
+        foreach (var warehouse in warehouses)
         {
-            foreach(var demand in warehouse.Demands)
+            foreach (var demand in warehouse.Demands)
             {
-                // check demand against all other warehouses
                 var otherWarehouses = warehouses
                     .Where(w => w.Id != warehouse.Id)
                     .OrderBy(w => w.Position.DistanceTo(warehouse.Position))
                     .ToList();
+
                 foreach (var otherWarehouse in otherWarehouses)
                 {
-                    // get the maximum amount of this ingredient that can be taken from this warehouse
                     int possibleAmount = Math.Min(
                         otherWarehouse.Stock.GetCount(demand.Ingredient.Type),
                         demand.Ingredient.Amount);
-                    if (possibleAmount == 0)
-                    {
-                        continue;   // this warehouse has no assets of the required type
-                    }
-                    
-                    // check if demand factory can handle this input
+
+                    if (possibleAmount == 0) continue;
+
                     if (warehouse.Stock.GetCount(demand.Ingredient.Type) + possibleAmount <= warehouse.Stock.StockLimit)
                     {
                         int distance = otherWarehouse.Position.DistanceTo(warehouse.Position);
-                        // get assets from warehouse
                         var assets = otherWarehouse.Stock.Take(demand.Ingredient.Type, possibleAmount);
 
-                        // adjust assets
                         foreach (var asset in assets)
                         {
                             asset.InitializeTransport(
@@ -367,7 +371,59 @@ public class EconomyManager
     }
 
     private int CalculateTurnDistance(int distance)
+        => (int)Math.Ceiling((float)distance / _transportationPerTurn);
+
+    // -------------------- Serialization --------------------
+
+    private sealed class EconomyManagerState
     {
-        return (int)Math.Ceiling((float)distance / _transportationPerTurn);
+        public int TransportationPerTurn { get; set; }
+        public Dictionary<int, Recipe> Recipes { get; set; } = new();
+        public Dictionary<string, Factory> Factories { get; set; } = new();
+        public Dictionary<string, Warehouse> Warehouses { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Serialize the entire EconomyManager state (recipes, factories, warehouses including demands & stock).
+    /// </summary>
+    public string ToJson(JsonSerializerOptions? options = null)
+    {
+        options ??= Utils.CreateDefaultJsonOptions();
+
+        var state = new EconomyManagerState
+        {
+            TransportationPerTurn = _transportationPerTurn,
+            Recipes = _recipeStore.ToDictionary(kvp => kvp.Key, kvp => kvp.Value),
+            Factories = _factoryStore.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value),
+            Warehouses = _warehouseStore.ToDictionary(kvp => kvp.Key.ToString(), kvp => kvp.Value)
+        };
+
+        return JsonSerializer.Serialize(state, options);
+    }
+
+    /// <summary>
+    /// Rehydrate an EconomyManager from JSON produced by <see cref="ToJson"/>.
+    /// </summary>
+    public static EconomyManager FromJson(string json, JsonSerializerOptions? options = null)
+    {
+        options ??= Utils.CreateDefaultJsonOptions();
+
+        var state = JsonSerializer.Deserialize<EconomyManagerState>(json, options)
+                    ?? throw new InvalidOperationException("Invalid EconomyManager JSON.");
+
+        // Rebuild manager state
+        var manager = new EconomyManager(state.Recipes, state.TransportationPerTurn);
+
+        manager._factoryStore = state.Factories.ToDictionary(
+            kvp => Guid.Parse(kvp.Key),
+            kvp => kvp.Value
+        );
+
+        manager._warehouseStore = state.Warehouses.ToDictionary(
+            kvp => Guid.Parse(kvp.Key),
+            kvp => kvp.Value
+        );
+
+        return manager;
     }
 }

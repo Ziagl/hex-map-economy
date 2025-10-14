@@ -1,18 +1,15 @@
 ﻿using com.hexagonsimulations.HexMapBase.Models;
-using HexMapEconomy.Models;
+using com.hexagonsimulations.HexMapEconomy.Models;
 
-namespace HexMapEconomy.Tests;
+namespace com.hexagonsimulations.HexMapEconomy.Tests;
 
 [TestClass]
 public sealed class EconomyManagerTests
 {
-    private readonly int LUMBERJACK = 1;
-    private readonly int SAWMILL = 2;
-
     [TestMethod]
     public void EconomyManagerBasics()
     {
-        var manager = new EconomyManager(GenerateFactoryTypes());
+        var manager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         // warehouse
         var position = new CubeCoordinates(0, 0, 0);
         int ownerId = 1;
@@ -24,7 +21,7 @@ public sealed class EconomyManagerTests
         Assert.IsNotNull(warehouse, "Warehouse should be found by position.");
         // factories
         position = new CubeCoordinates(1, 1, -2);
-        int type = LUMBERJACK;
+        int type = TestUtils.LUMBERJACK;
         success = manager.CreateFactory(position, type, 2, warehouse);
         Assert.IsFalse(success, "Factory should not be created with a different owner than warehouse.");
         success = manager.CreateFactory(position, type, ownerId, warehouse);
@@ -46,7 +43,7 @@ public sealed class EconomyManagerTests
     [TestMethod]
     public void FactoryProcess()
     {
-        var manager = new EconomyManager(GenerateFactoryTypes());
+        var manager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         // warehouse
         var position = new CubeCoordinates(0, 0, 0);
         int ownerId = 1;
@@ -56,7 +53,7 @@ public sealed class EconomyManagerTests
         Assert.IsNotNull(warehouse, "Warehouse should be found by position.");
         // factory tests
         position = new CubeCoordinates(1, 2, -3);
-        int type = LUMBERJACK;
+        int type = TestUtils.LUMBERJACK;
         success = manager.CreateFactory(position, type, ownerId, warehouse);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = manager.GetFactoriesByPosition(position).First();
@@ -64,14 +61,14 @@ public sealed class EconomyManagerTests
         Assert.AreEqual(1, factory.Productivity, "Factory should have produced one output.");
         // tests a factory that needs input
         position = new CubeCoordinates(1, 1, -2);
-        type = SAWMILL;
+        type = TestUtils.SAWMILL;
         success = manager.CreateFactory(position, type, ownerId, warehouse);
         Assert.IsTrue(success, "Factory should be created successfully.");
         factory = manager.GetFactoriesByPosition(position).First();
         manager.GetWarehouseById(factory.WarehouseId).Stock.Clear();
         manager.ProcessFactories();
         Assert.AreEqual(0, factory.Productivity, "Factory should not produce output without input.");
-        success = manager.GetWarehouseById(factory.WarehouseId).Stock.Add(CreateAssets(1, 1, position, ownerId).First()); // add wood to stock
+        success = manager.GetWarehouseById(factory.WarehouseId).Stock.Add(TestUtils.CreateAssets(1, 1, position, ownerId).First()); // add wood to stock
         Assert.IsTrue(success, "Wood should be added to factory stock.");
         manager.ProcessFactories();
         Assert.AreEqual(0.5f, factory.Productivity, "Factory should have produced one output.");
@@ -80,7 +77,7 @@ public sealed class EconomyManagerTests
     [TestMethod]
     public void FactoryStock()
     {
-        var manager = new EconomyManager(GenerateFactoryTypes());
+        var manager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         // warehouse
         var position = new CubeCoordinates(0, 0, 0);
         int ownerId = 1;
@@ -90,17 +87,17 @@ public sealed class EconomyManagerTests
         Assert.IsNotNull(warehouse, "Warehouse should be found by position.");
         // factories
         position = new CubeCoordinates(1, 1, -2);
-        var type = SAWMILL;
+        var type = TestUtils.SAWMILL;
         success = manager.CreateFactory(position, type, ownerId, warehouse);
         Assert.IsTrue(success, "Factory should be created successfully.");
         var factory = manager.GetFactoriesByPosition(position).First();
-        int added = manager.GetWarehouseById(factory.WarehouseId).Stock.AddRange(CreateAssets(1, 3, position, ownerId));
+        int added = manager.GetWarehouseById(factory.WarehouseId).Stock.AddRange(TestUtils.CreateAssets(1, 3, position, ownerId));
         Assert.AreEqual(3, added, "Factory should accept wood into stock.");
         success = manager.GetWarehouseById(factory.WarehouseId).Stock.Has(new Dictionary<int, int> { { 1, 3 } });
         Assert.IsTrue(success, "Factory stock should have 3 wood.");
         success = manager.GetWarehouseById(factory.WarehouseId).Stock.Has(new Dictionary<int, int> { { 2, 1 } });
         Assert.IsFalse(success, "Factory stock should not have any planks.");
-        added = manager.GetWarehouseById(factory.WarehouseId).Stock.AddRange(CreateAssets(2, 1, position, ownerId));
+        added = manager.GetWarehouseById(factory.WarehouseId).Stock.AddRange(TestUtils.CreateAssets(2, 1, position, ownerId));
         Assert.AreEqual(1, added, "Factory should accept mixed stock.");
         manager.ProcessFactories(); // process factory to make assets available
         var entries = manager.GetWarehouseById(factory.WarehouseId).Stock.Take(3, 2);
@@ -114,7 +111,7 @@ public sealed class EconomyManagerTests
     [TestMethod]
     public void FactoryDemands()
     {
-        var manager = new EconomyManager(GenerateFactoryTypes());
+        var manager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         // warehouse
         var position = new CubeCoordinates(1, 0, -1);
         int ownerId = 1;
@@ -124,13 +121,13 @@ public sealed class EconomyManagerTests
         Assert.IsNotNull(warehouse, "Warehouse should be found by position.");
         // add a generator
         position = new CubeCoordinates(0, 0, 0);
-        int type = LUMBERJACK;
+        int type = TestUtils.LUMBERJACK;
         success = manager.CreateFactory(position, type, ownerId, warehouse);
         var generator = manager.GetFactoriesByPosition(position).First();
         Assert.IsTrue(success, "Factory (generator) should be created successfully.");
         // add a producer
         position = new CubeCoordinates(1, 1, -2);
-        type = SAWMILL;
+        type = TestUtils.SAWMILL;
         success = manager.CreateFactory(position, type, ownerId, warehouse);
         Assert.IsTrue(success, "Factory (producer) should be created successfully.");
         var factory = manager.GetFactoriesByPosition(position).First();
@@ -148,7 +145,7 @@ public sealed class EconomyManagerTests
     [TestMethod]
     public void WarehousesHandleDemands()
     {
-        var manager = new EconomyManager(GenerateFactoryTypes());
+        var manager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         // warehouse
         var position = new CubeCoordinates(0, 0, 0);
         int ownerId = 1;
@@ -163,12 +160,12 @@ public sealed class EconomyManagerTests
         Assert.IsNotNull(warehouse2, "Warehouse 2 should be found by position.");
         // factories
         position = new CubeCoordinates(-1, 1, 0);
-        int type = LUMBERJACK;
+        int type = TestUtils.LUMBERJACK;
         success = manager.CreateFactory(position, type, ownerId, warehouse1);
         var generator = manager.GetFactoriesByPosition(position).First();
         Assert.IsTrue(success, "Factory (generator) should be created successfully.");
         position = new CubeCoordinates(1, 1, -2);
-        type = SAWMILL;
+        type = TestUtils.SAWMILL;
         success = manager.CreateFactory(position, type, ownerId, warehouse2);
         Assert.IsTrue(success, "Factory (producer) should be created successfully.");
         var factory = manager.GetFactoriesByPosition(position).First();
@@ -185,7 +182,7 @@ public sealed class EconomyManagerTests
     [TestMethod]
     public void EstimateDeliveryTime()
     {
-        var manager = new EconomyManager(GenerateFactoryTypes());
+        var manager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         // add 3 warehouses with different distances to first warehouse
         var position1 = new CubeCoordinates(0, 0, 0);
         int ownerId = 1;
@@ -193,19 +190,19 @@ public sealed class EconomyManagerTests
         Assert.IsTrue(success, "Warehouse 1 should be created successfully.");
         var warehouse1 = manager.GetWarehouseByPosition(position1);
         Assert.IsNotNull(warehouse1, "Warehouse 1 should be found by position.");
-        warehouse1.Stock.AddRange(CreateAssets(1, 1, position1, ownerId));
+        warehouse1.Stock.AddRange(TestUtils.CreateAssets(1, 1, position1, ownerId));
         var position2 = new CubeCoordinates(5, 0, -5);
         success = manager.CreateWarehouse(position2, ownerId, 10);
         Assert.IsTrue(success, "Warehouse 2 should be created successfully.");
         var warehouse2 = manager.GetWarehouseByPosition(position2);
         Assert.IsNotNull(warehouse2, "Warehouse 2 should be found by position.");
-        warehouse2.Stock.AddRange(CreateAssets(1, 1, position2, ownerId));
+        warehouse2.Stock.AddRange(TestUtils.CreateAssets(1, 1, position2, ownerId));
         var position3 = new CubeCoordinates(10, 0, -10);
         success = manager.CreateWarehouse(position3, ownerId, 10);
         Assert.IsTrue(success, "Warehouse 3 should be created successfully.");
         var warehouse3 = manager.GetWarehouseByPosition(position3);
         Assert.IsNotNull(warehouse3, "Warehouse 3 should be found by position.");
-        warehouse3.Stock.AddRange(CreateAssets(1, 1, position3, ownerId));
+        warehouse3.Stock.AddRange(TestUtils.CreateAssets(1, 1, position3, ownerId));
         // test delivery time estimation
         var availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 } }, ownerId, position1);
         Assert.IsTrue(0 == availability.Turns, "Delivery time for 1 asset should be 0 turns.");
@@ -220,33 +217,5 @@ public sealed class EconomyManagerTests
         Assert.IsTrue(-1 == availability.Turns, "Delivery time for 1 asset should be -1 turns, because it is not available.");
         Assert.IsTrue(0 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
         Assert.IsTrue(-1 == availability.AvailabilityDetails[1].Turns, "Delivery time for second asset should be -1 turns, because it is not available.");
-    }
-
-    private List<Asset> CreateAssets(int type, int amount, CubeCoordinates position, int ownerId, int distance = 1)
-    {
-        var assets = new List<Asset>();
-        for (int i = 0; i < amount; i++)
-        {
-            var asset = new Asset(position, type, ownerId);
-            asset.InitializeTransport(position, distance);
-            assets.Add(asset);
-        }
-
-        return assets;
-    }
-
-    private Dictionary<int, Recipe> GenerateFactoryTypes()
-    {
-        return new Dictionary<int, Recipe>
-        {
-            { LUMBERJACK, new Recipe(
-                new List<RecipeIngredient>(), 
-                new List<RecipeIngredient>(){ new RecipeIngredient() { Type = 1, Amount = 1 } }
-                ) },    // lumberjack creates wood (abstract)
-            { SAWMILL, new Recipe(
-                new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 } }, 
-                new List<RecipeIngredient>() { new RecipeIngredient() { Type = 2, Amount = 1 } }
-                ) },    // sawmill creates a plank from a wood (abstract)
-        };
     }
 }

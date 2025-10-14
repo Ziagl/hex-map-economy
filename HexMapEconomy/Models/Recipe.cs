@@ -1,6 +1,6 @@
 ﻿using System.Text.Json;
 
-namespace HexMapEconomy.Models;
+namespace com.hexagonsimulations.HexMapEconomy.Models;
 
 // a description for a factory how to behave in the simulation
 public class Recipe

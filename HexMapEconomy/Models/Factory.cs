@@ -1,28 +1,62 @@
-﻿using com.hexagonsimulations.HexMapBase.Models;
+﻿using System.Text.Json.Serialization;
+using com.hexagonsimulations.HexMapBase.Models;
 
-namespace HexMapEconomy.Models;
+namespace com.hexagonsimulations.HexMapEconomy.Models;
 
 // a building that generates Assets or combines them to other Assets
 public class Factory : EconomyBase
 {
-    public CubeCoordinates Position { get; init; }  // map position of this factory
-    public Recipe Recipe { get; init; }             // recipe defines of this factory works
+    public CubeCoordinates Position { get; init; }          // map position of this factory
+    public Recipe Recipe { get; init; }                     // recipe defines how this factory works
     public Guid WarehouseId { get; init; }
 
     // statistic information about the factory
-    public float Productivity { get => (float)_lastTenTurnsOutput.Sum() / (float)_lastTenTurnsOutput.Count(); }
+    public float Productivity => _lastTenTurnsOutput.Count == 0
+        ? 0f
+        : (float)_lastTenTurnsOutput.Sum() / _lastTenTurnsOutput.Count;
+
     private readonly Queue<int> _lastTenTurnsOutput = new(10);
 
-    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, Warehouse warehouse) : base(type,ownerId)
+    // Runtime ctor (contains Warehouse – not usable for JSON deserialization)
+    public Factory(Recipe recipe, CubeCoordinates position, int type, int ownerId, Warehouse warehouse)
+        : base(type, ownerId)
     {
         Position = position;
         Recipe = recipe;
         WarehouseId = warehouse.Id;
     }
 
-    /// <summary>
-    /// Processes the recipe for this factory.
-    /// </summary>
+    // Deserialization ctor: every parameter must map to a property (case-insensitive).
+    // This avoids the serializer picking the public ctor with the unmatched 'warehouse' parameter.
+    [JsonConstructor]
+    internal Factory(Guid id, CubeCoordinates position, Recipe recipe, int type, int ownerId, Guid warehouseId, List<int>? lastTenOutputs = null)
+        : base(id, type, ownerId)
+    {
+        Position = position;
+        Recipe = recipe;
+        WarehouseId = warehouseId;
+
+        if (lastTenOutputs != null)
+        {
+            foreach (var v in lastTenOutputs.Take(10))
+                _lastTenTurnsOutput.Enqueue(v);
+        }
+    }
+
+    // Exposed for serialization & test equality (test reflects "LastTenOutputs")
+    [JsonInclude]
+    public List<int> LastTenOutputs
+    {
+        get => _lastTenTurnsOutput.ToList();
+        private set
+        {
+            _lastTenTurnsOutput.Clear();
+            if (value == null) return;
+            foreach (var v in value.Take(10))
+                _lastTenTurnsOutput.Enqueue(v);
+        }
+    }
+
     internal void Process(Warehouse warehouse)
     {
         bool success = false;
@@ -41,17 +75,15 @@ public class Factory : EconomyBase
             success = Recipe.Inputs.All(input =>
             {
                 var assets = warehouse.Stock.Assets.Where(s => s.Type == input.Type && s.IsAvailable).ToList();
-                return assets.Count() >= input.Amount;
+                return assets.Count >= input.Amount;
             });
 
             if (success)
             {
-                List<Asset> takenAssets = new List<Asset>();
-                // consume the required inputs from stock
+                List<Asset> takenAssets = new();
                 foreach (var input in Recipe.Inputs)
                 {
                     var takenEntries = warehouse.Stock.Take(input.Type, input.Amount);
-                    // Only proceed if the required amount was actually taken
                     if (takenEntries.Count == 0)
                     {
                         success = false;
@@ -59,41 +91,37 @@ public class Factory : EconomyBase
                     }
                     takenAssets.AddRange(takenEntries);
                 }
-                // move all taken assets back to the warehouse store
-                if (success == false)
+                if (!success)
                 {
                     warehouse.Stock.AddRange(takenAssets);
                 }
-                // from here taken stock entries are not needed anymore
             }
         }
 
-        // create output according to receipe
         if (success)
         {
-            Recipe.Outputs.ForEach(output =>
+            foreach (var output in Recipe.Outputs)
             {
                 for (int i = 0; i < output.Amount; i++)
                 {
                     var asset = new Asset(Position, output.Type, OwnerId, generator);
-                    // adds as much assets to stock as possible
-                    success = warehouse.Stock.Add(asset);
+                    if (!warehouse.Stock.Add(asset))
+                    {
+                        success = false;
+                        break;
+                    }
                 }
-            });
+                if (!success) break;
+            }
         }
 
-        // store meta data for productivity calculation
         AddOutput(success ? 1 : 0);
     }
 
-    // keeps track of the last 10 turns output for productivity calculation
     private void AddOutput(int value)
     {
         if (_lastTenTurnsOutput.Count == 10)
-        {
             _lastTenTurnsOutput.Dequeue();
-        }
-
         _lastTenTurnsOutput.Enqueue(value);
     }
 }

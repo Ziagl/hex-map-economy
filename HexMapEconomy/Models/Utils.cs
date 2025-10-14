@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace HexMapEconomy.Models;
+namespace com.hexagonsimulations.HexMapEconomy.Models;
 
 internal class Utils
 {
