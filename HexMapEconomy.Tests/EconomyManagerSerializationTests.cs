@@ -10,7 +10,7 @@ namespace com.hexagonsimulations.HexMapEconomy.Tests;
 public sealed class EconomyManagerSerializationTests
 {
     private readonly string TempDir = @"C:\Temp\";
-    private readonly bool DumpToDisk = true; // set to true to dump serialized data to disk for inspection
+    private readonly bool DumpToDisk = false; // set to true to dump serialized data to disk for inspection
     private static JsonSerializerOptions JsonOpts => Utils.CreateDefaultJsonOptions();
 
     // ---------------- EconomyManager ----------------
