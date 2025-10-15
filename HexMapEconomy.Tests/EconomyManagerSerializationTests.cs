@@ -2,23 +2,31 @@
 using com.hexagonsimulations.HexMapEconomy.Models;
 using System.Collections;
 using System.Reflection;
+using System.Text.Json;
 
 namespace com.hexagonsimulations.HexMapEconomy.Tests;
 
 [TestClass]
 public sealed class EconomyManagerSerializationTests
 {
+    private readonly string TempDir = @"C:\Temp\";
+    private readonly bool DumpToDisk = true; // set to true to dump serialized data to disk for inspection
+    private static JsonSerializerOptions JsonOpts => Utils.CreateDefaultJsonOptions();
+
+    // ---------------- EconomyManager ----------------
+
     [TestMethod]
-    public void SerializationDeserializationJson()
+    public void EconomyManager_Json()
     {
         var economyManager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         PrepareEconomyManager(economyManager);
         var json = economyManager.ToJson();
         Assert.IsFalse(string.IsNullOrWhiteSpace(json), "JSON should not be empty.");
 
-        // dump this map as JSON to disk
-        //var filePath = @"C:\Temp\EconomyManager.json";
-        //File.WriteAllText(filePath, json);
+        if (DumpToDisk)
+        {
+            File.WriteAllText($"{TempDir}EconomyManager.json", json);
+        }
 
         var roundTripped = EconomyManager.FromJson(json);
         Assert.IsNotNull(roundTripped, "Deserialized CityManager should not be null.");
@@ -27,7 +35,7 @@ public sealed class EconomyManagerSerializationTests
     }
 
     [TestMethod]
-    public void SerializationDeserializationBinary()
+    public void EconomyManager_Binary()
     {
         var economyManager = new EconomyManager(TestUtils.GenerateFactoryTypes());
         PrepareEconomyManager(economyManager);
@@ -37,9 +45,10 @@ public sealed class EconomyManagerSerializationTests
             economyManager.Write(writer);
         }
 
-        // dump this map as BIN to disk
-        //var filePath = @"C:\Temp\EconomyManager.bin";
-        //File.WriteAllBytes(filePath, ms.ToArray());
+        if (DumpToDisk)
+        {
+            File.WriteAllBytes($"{TempDir}EconomyManager.bin", ms.ToArray());
+        }
 
         ms.Position = 0;
         EconomyManager roundTripped;
@@ -50,6 +59,420 @@ public sealed class EconomyManagerSerializationTests
 
         Assert.IsNotNull(roundTripped, "Binary deserialized EconomyManager should not be null.");
         AssertEconomyManagerEqual(economyManager, roundTripped);
+    }
+
+    // ---------------- Asset ----------------
+    
+    [TestMethod]
+    public void Asset_Json()
+    {
+        var original = new Asset(Guid.NewGuid(),
+                                 new CubeCoordinates(2, -1, -1),
+                                 type: 7,
+                                 ownerId: 3,
+                                 turnsUntilAvailable: 4,
+                                 isAvailable: false);
+
+        var json = original.ToJson(JsonOpts);
+        var clone = Asset.FromJson(json, JsonOpts);
+
+        if (DumpToDisk)
+        {
+            File.WriteAllText($"{TempDir}Asset.json", json);
+        }
+
+        Assert.AreEqual(original.Id, clone.Id);
+        Assert.AreEqual(original.Type, clone.Type);
+        Assert.AreEqual(original.OwnerId, clone.OwnerId);
+        Assert.AreEqual(original.Position, clone.Position);
+        Assert.AreEqual(original.TurnsUntilAvailable, clone.TurnsUntilAvailable);
+        Assert.AreEqual(original.IsAvailable, clone.IsAvailable);
+    }
+
+    [TestMethod]
+    public void Asset_Binary()
+    {
+        var original = new Asset(Guid.NewGuid(),
+                                 new CubeCoordinates(-3, 1, 2),
+                                 type: 5,
+                                 ownerId: 9,
+                                 turnsUntilAvailable: 2,
+                                 isAvailable: true);
+
+        using var ms = new MemoryStream();
+        using (var bw = new BinaryWriter(ms, System.Text.Encoding.UTF8, true))
+        {
+            original.Write(bw);
+        }
+
+        if (DumpToDisk)
+        {
+            File.WriteAllBytes($"{TempDir}Asset.bin", ms.ToArray());
+        }
+
+        ms.Position = 0;
+        Asset clone;
+        using (var br = new BinaryReader(ms, System.Text.Encoding.UTF8, true))
+        {
+            clone = Asset.Read(br);
+        }
+
+        Assert.AreEqual(original.Id, clone.Id);
+        Assert.AreEqual(original.Position, clone.Position);
+        Assert.AreEqual(original.Type, clone.Type);
+        Assert.AreEqual(original.OwnerId, clone.OwnerId);
+        Assert.AreEqual(original.TurnsUntilAvailable, clone.TurnsUntilAvailable);
+        Assert.AreEqual(original.IsAvailable, clone.IsAvailable);
+    }
+
+    // ---------------- Recipe ----------------
+
+    [TestMethod]
+    public void Recipe_Json()
+    {
+        var recipe = new Recipe(
+            inputs: new List<RecipeIngredient>
+            {
+                new() { Type = 1, Amount = 3 },
+                new() { Type = 2, Amount = 1 }
+            },
+            outputs: new List<RecipeIngredient>
+            {
+                new() { Type = 5, Amount = 2 }
+            },
+            duration: 6);
+
+        var json = recipe.ToJson(JsonOpts);
+        var clone = Recipe.FromJson(json, JsonOpts);
+
+        if (DumpToDisk)
+        {
+            File.WriteAllText($"{TempDir}Recipe.json", json);
+        }
+
+        Assert.AreEqual(recipe.Duration, clone.Duration);
+        AssertIngredientsEqual(recipe.Inputs, clone.Inputs);
+        AssertIngredientsEqual(recipe.Outputs, clone.Outputs);
+    }
+
+    [TestMethod]
+    public void Recipe_Binary()
+    {
+        var recipe = new Recipe(
+            inputs: new List<RecipeIngredient> { new() { Type = 10, Amount = 4 } },
+            outputs: new List<RecipeIngredient> { new() { Type = 20, Amount = 1 } },
+            duration: 3);
+
+        using var ms = new MemoryStream();
+        using (var bw = new BinaryWriter(ms, System.Text.Encoding.UTF8, true))
+        {
+            recipe.Write(bw);
+        }
+
+        if (DumpToDisk)
+        {
+            File.WriteAllBytes($"{TempDir}Recipe.bin", ms.ToArray());
+        }
+
+        ms.Position = 0;
+        Recipe clone;
+        using (var br = new BinaryReader(ms, System.Text.Encoding.UTF8, true))
+        {
+            clone = Recipe.Read(br);
+        }
+
+        Assert.AreEqual(recipe.Duration, clone.Duration);
+        AssertIngredientsEqual(recipe.Inputs, clone.Inputs);
+        AssertIngredientsEqual(recipe.Outputs, clone.Outputs);
+    }
+
+    // ---------------- Stock ----------------
+
+    [TestMethod]
+    public void Stock_Json()
+    {
+        var stock = new Stock(10);
+        var pos = new CubeCoordinates(0, 0, 0);
+        stock.AddRange(new[]
+        {
+            new Asset(Guid.NewGuid(), pos, 1, 1, 0, true),
+            new Asset(Guid.NewGuid(), pos, 2, 1, 3, false)
+        });
+
+        var json = stock.ToJson(JsonOpts);
+        var clone = Stock.FromJson(json, JsonOpts);
+
+        // dump model as JSON to disk
+        if (DumpToDisk)
+        {
+            File.WriteAllText($"{TempDir}Stock.json", json);
+        }
+
+        Assert.AreEqual(stock.StockLimit, clone.StockLimit);
+        Assert.AreEqual(stock.Assets.Count, clone.Assets.Count);
+        foreach (var a in stock.Assets)
+        {
+            Assert.IsTrue(clone.Assets.Any(c => c.Id == a.Id &&
+                                                c.Type == a.Type &&
+                                                c.OwnerId == a.OwnerId &&
+                                                c.Position.Equals(a.Position)));
+        }
+    }
+
+    [TestMethod]
+    public void Stock_Binary()
+    {
+        var stock = new Stock(5);
+        var pos = new CubeCoordinates(1, -1, 0);
+        stock.AddRange(new[]
+        {
+            new Asset(Guid.NewGuid(), pos, 3, 2, 1, false),
+            new Asset(Guid.NewGuid(), pos, 4, 2, 0, true)
+        });
+
+        using var ms = new MemoryStream();
+        using (var bw = new BinaryWriter(ms, System.Text.Encoding.UTF8, true))
+        {
+            stock.Write(bw);
+        }
+
+        if (DumpToDisk)
+        {
+            File.WriteAllBytes($"{TempDir}Stock.bin", ms.ToArray());
+        }
+
+        ms.Position = 0;
+        Stock clone;
+        using (var br = new BinaryReader(ms, System.Text.Encoding.UTF8, true))
+        {
+            clone = Stock.Read(br);
+        }
+
+        Assert.AreEqual(stock.StockLimit, clone.StockLimit);
+        Assert.AreEqual(stock.Assets.Count, clone.Assets.Count);
+        foreach (var a in stock.Assets)
+            Assert.IsTrue(clone.Assets.Any(c => c.Id == a.Id));
+    }
+
+    // ---------------- Factory ----------------
+
+    [TestMethod]
+    public void Factory_Json()
+    {
+        var recipeStore = new Dictionary<int, Recipe>
+        {
+            { 100, new Recipe(new List<RecipeIngredient>{ new(){ Type = 1, Amount = 2 } },
+                              new List<RecipeIngredient>{ new(){ Type = 5, Amount = 1 } },
+                              duration: 4) }
+        };
+
+        var warehouse = new Warehouse(new CubeCoordinates(0, 0, 0), ownerId: 9, stockLimit: 20);
+        var factory = new Factory(recipeStore[100], new CubeCoordinates(2, -1, -1), 100, 9, warehouse);
+
+        var json = JsonSerializer.Serialize(factory, JsonOpts);
+        var clone = JsonSerializer.Deserialize<Factory>(json, JsonOpts);
+
+        // dump model as JSON to disk
+        if (DumpToDisk)
+        {
+            File.WriteAllText($"{TempDir}Factory.json", json);
+        }
+
+        Assert.IsNotNull(clone);
+        Assert.AreEqual(factory.Id, clone!.Id);
+        Assert.AreEqual(factory.Type, clone.Type);
+        Assert.AreEqual(factory.OwnerId, clone.OwnerId);
+        Assert.AreEqual(factory.WarehouseId, clone.WarehouseId);
+        Assert.AreEqual(factory.Position, clone.Position);
+        Assert.AreEqual(factory.Recipe.Duration, clone.Recipe.Duration);
+        AssertIngredientsEqual(factory.Recipe.Inputs, clone.Recipe.Inputs);
+        AssertIngredientsEqual(factory.Recipe.Outputs, clone.Recipe.Outputs);
+    }
+
+    [TestMethod]
+    public void Factory_Binary()
+    {
+        var recipeStore = new Dictionary<int, Recipe>
+        {
+            { 42, new Recipe(new List<RecipeIngredient>{ new(){ Type = 3, Amount = 1 } },
+                             new List<RecipeIngredient>{ new(){ Type = 9, Amount = 2 } },
+                             duration: 5) }
+        };
+        var warehouse = new Warehouse(new CubeCoordinates(1, 0, -1), 5, 15);
+        var factory = new Factory(recipeStore[42], new CubeCoordinates(2, -2, 0), 42, 5, warehouse);
+
+        using var ms = new MemoryStream();
+        using (var bw = new BinaryWriter(ms, System.Text.Encoding.UTF8, true))
+        {
+            factory.Write(bw);
+        }
+
+        if (DumpToDisk)
+        {
+            File.WriteAllBytes($"{TempDir}Factory.bin", ms.ToArray());
+        }
+
+        ms.Position = 0;
+        Factory clone;
+        using (var br = new BinaryReader(ms, System.Text.Encoding.UTF8, true))
+        {
+            clone = Factory.Read(br, recipeStore);
+        }
+
+        Assert.AreEqual(factory.Id, clone.Id);
+        Assert.AreEqual(factory.Type, clone.Type);
+        Assert.AreEqual(factory.OwnerId, clone.OwnerId);
+        Assert.AreEqual(factory.WarehouseId, clone.WarehouseId);
+        Assert.AreEqual(factory.Position, clone.Position);
+    }
+
+    // ---------------- Warehouse ----------------
+
+    [TestMethod]
+    public void Warehouse_Json()
+    {
+        var warehouse = new Warehouse(new CubeCoordinates(0, 1, -1), 11, 25);
+        // add stock
+        warehouse.Stock.Add(new Asset(Guid.NewGuid(), new CubeCoordinates(0, 1, -1), 3, 11, 0, true));
+
+        // minimal factory+ demand (resolver later)
+        var factory = new Factory(new Recipe(null, new List<RecipeIngredient> { new() { Type = 7, Amount = 1 } }, 2),
+                                  new CubeCoordinates(2, -1, -1),
+                                  77,
+                                  11,
+                                  warehouse);
+
+        warehouse.AddDemand(new Demand(factory, new RecipeIngredient { Type = 3, Amount = 5 }));
+
+        var json = warehouse.ToJson(JsonOpts);
+        var clone = Warehouse.FromJson(json, id => id == factory.Id ? factory : null, JsonOpts);
+
+        // dump model as JSON to disk
+        if (DumpToDisk)
+        {
+            File.WriteAllText($"{TempDir}Warehouse.json", json);
+        }
+
+        Assert.AreEqual(warehouse.Id, clone.Id);
+        Assert.AreEqual(warehouse.OwnerId, clone.OwnerId);
+        Assert.AreEqual(warehouse.Position, clone.Position);
+        Assert.AreEqual(warehouse.StockLimit, clone.StockLimit);
+        Assert.AreEqual(warehouse.Stock.Assets.Count, clone.Stock.Assets.Count);
+        Assert.AreEqual(warehouse.Demands.Count, clone.Demands.Count);
+        if (warehouse.Demands.Count > 0)
+        {
+            Assert.AreEqual(warehouse.Demands[0].Ingredient.Type, clone.Demands[0].Ingredient.Type);
+            Assert.AreEqual(warehouse.Demands[0].Ingredient.Amount, clone.Demands[0].Ingredient.Amount);
+        }
+    }
+
+    [TestMethod]
+    public void Warehouse_Binary()
+    {
+        var warehouse = new Warehouse(new CubeCoordinates(-1, 1, 0), 3, 30);
+        var factory = new Factory(
+            new Recipe(new List<RecipeIngredient> { new() { Type = 1, Amount = 1 } },
+                       new List<RecipeIngredient> { new() { Type = 2, Amount = 1 } },
+                       2),
+            new CubeCoordinates(0, -1, 1),
+            13,
+            3,
+            warehouse);
+
+        warehouse.Stock.Add(new Asset(Guid.NewGuid(), warehouse.Position, 1, 3, 0, true));
+        warehouse.AddDemand(new Demand(factory, new RecipeIngredient { Type = 1, Amount = 2 }));
+
+        using var ms = new MemoryStream();
+        using (var bw = new BinaryWriter(ms, System.Text.Encoding.UTF8, true))
+        {
+            warehouse.Write(bw);
+        }
+
+        if (DumpToDisk)
+        {
+            File.WriteAllBytes($"{TempDir}Warehouse.bin", ms.ToArray());
+        }
+
+        ms.Position = 0;
+        Warehouse clone;
+        using (var br = new BinaryReader(ms, System.Text.Encoding.UTF8, true))
+        {
+            clone = Warehouse.Read(br, id => id == factory.Id ? factory : null);
+        }
+
+        Assert.AreEqual(warehouse.Id, clone.Id);
+        Assert.AreEqual(warehouse.OwnerId, clone.OwnerId);
+        Assert.AreEqual(warehouse.Position, clone.Position);
+        Assert.AreEqual(warehouse.StockLimit, clone.StockLimit);
+        Assert.AreEqual(warehouse.Stock.Assets.Count, clone.Stock.Assets.Count);
+        Assert.AreEqual(warehouse.Demands.Count, clone.Demands.Count);
+    }
+
+    // ---------------- Demand ----------------
+
+    [TestMethod]
+    public void Demand_Json()
+    {
+        var warehouse = new Warehouse(new CubeCoordinates(0, 0, 0), 1, 10);
+        var recipe = new Recipe(new List<RecipeIngredient> { new() { Type = 1, Amount = 2 } },
+                                new List<RecipeIngredient> { new() { Type = 5, Amount = 1 } },
+                                3);
+        var factory = new Factory(recipe, new CubeCoordinates(1, -1, 0), 50, 1, warehouse);
+        var demand = new Demand(factory, new RecipeIngredient { Type = 1, Amount = 4 });
+
+        var json = demand.ToJson(JsonOpts);
+        var clone = Demand.FromJson(json, id => id == factory.Id ? factory : null, JsonOpts);
+
+        // dump model as JSON to disk
+        if (DumpToDisk)
+        {
+            File.WriteAllText($"{TempDir}Demand.json", json);
+        }
+
+        Assert.AreEqual(demand.Factory.Id, clone.Factory.Id);
+        Assert.AreEqual(demand.Ingredient.Type, clone.Ingredient.Type);
+        Assert.AreEqual(demand.Ingredient.Amount, clone.Ingredient.Amount);
+    }
+
+    [TestMethod]
+    public void Demand_Binary()
+    {
+        var warehouse = new Warehouse(new CubeCoordinates(0, 0, 0), 2, 10);
+        var recipe = new Recipe(null, new List<RecipeIngredient> { new() { Type = 7, Amount = 1 } }, 1);
+        var factory = new Factory(recipe, new CubeCoordinates(2, -1, -1), 99, 2, warehouse);
+        var demand = new Demand(factory, new RecipeIngredient { Type = 7, Amount = 3 });
+
+        using var ms = new MemoryStream();
+        using (var bw = new BinaryWriter(ms, System.Text.Encoding.UTF8, true))
+        {
+            demand.Write(bw);
+        }
+
+        if (DumpToDisk)
+        {
+            File.WriteAllBytes($"{TempDir}Demand.bin", ms.ToArray());
+        }
+
+        ms.Position = 0;
+        Demand clone;
+        using (var br = new BinaryReader(ms, System.Text.Encoding.UTF8, true))
+        {
+            clone = Demand.Read(br, id => id == factory.Id ? factory : null);
+        }
+
+        Assert.AreEqual(demand.Factory.Id, clone.Factory.Id);
+        Assert.AreEqual(demand.Ingredient.Type, clone.Ingredient.Type);
+        Assert.AreEqual(demand.Ingredient.Amount, clone.Ingredient.Amount);
+    }
+
+    // --------------- Helpers ---------------
+
+    private static void AssertIngredientsEqual(List<RecipeIngredient> a, List<RecipeIngredient> b)
+    {
+        Assert.AreEqual(a.Count, b.Count, "Ingredient count mismatch");
+        var normA = a.OrderBy(i => i.Type).ThenBy(i => i.Amount).Select(i => (i.Type, i.Amount)).ToList();
+        var normB = b.OrderBy(i => i.Type).ThenBy(i => i.Amount).Select(i => (i.Type, i.Amount)).ToList();
+        CollectionAssert.AreEqual(normA, normB, "Ingredient list mismatch");
     }
 
     private void PrepareEconomyManager(EconomyManager manager)
