@@ -1,11 +1,11 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <Title>Hexagon Map Resource and Economy Library</Title>
-    <Version>0.4.0</Version>
+    <Version>0.5.0</Version>
     <Authors>Werner Ziegelwanger</Authors>
     <Company>Hexagon Simulations</Company>
     <Description>A library for resource handling and economy (production path and buildings) for tiled based games.</Description>
@@ -36,7 +36,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="HexMapBase" Version="0.4.1" />
+    <PackageReference Include="HexMapBase" Version="0.5.0" />
   </ItemGroup>
 
 </Project>
