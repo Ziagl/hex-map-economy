@@ -218,4 +218,121 @@ public sealed class EconomyManagerTests
         Assert.IsTrue(0 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
         Assert.IsTrue(-1 == availability.AvailabilityDetails[1].Turns, "Delivery time for second asset should be -1 turns, because it is not available.");
     }
+
+    [TestMethod]
+    public void TradeAssetsForOtherAssets()
+    {
+        var manager = new EconomyManager(TestUtils.GenerateFactoryTypes());
+        var position = new CubeCoordinates(0, 0, 0);
+        int ownerId = 1;
+        // add warehouse
+        bool success = manager.CreateWarehouse(position, ownerId, 20);
+        Assert.IsTrue(success, "Warehouse should be created successfully.");
+        var warehouse = manager.GetWarehouseByPosition(position);
+        Assert.IsNotNull(warehouse, "Warehouse should be found by position.");
+        // test 1: Basic 1:1 trade (3 wood -> 3 planks)
+        var woodAssets = TestUtils.CreateAssets(1, 3, position, ownerId);
+        warehouse.Stock.AddRange(woodAssets);
+        manager.ProcessFactories();
+        Assert.AreEqual(3, warehouse.Stock.Assets.Count, "Stock should have 3 wood assets.");
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, woodAssets, 2, tradeFactor: 1);
+        Assert.IsTrue(success, "Trade should succeed with 1:1 ratio.");
+        Assert.AreEqual(3, warehouse.Stock.Assets.Count, "Stock should still have 3 assets after trade.");
+        Assert.AreEqual(0, warehouse.Stock.GetCount(1), "Stock should have no wood after trade.");
+        Assert.AreEqual(3, warehouse.Stock.GetCount(2), "Stock should have 3 planks after trade.");
+        // test 2: 2:1 trade (4 planks -> 2 iron)
+        warehouse.Stock.Clear();
+        var plankAssets = TestUtils.CreateAssets(2, 4, position, ownerId);
+        warehouse.Stock.AddRange(plankAssets);
+        manager.ProcessFactories();
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, plankAssets, 3, tradeFactor: 2);
+        Assert.IsTrue(success, "Trade should succeed with 2:1 ratio.");
+        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should have 2 assets after 2:1 trade.");
+        Assert.AreEqual(0, warehouse.Stock.GetCount(2), "Stock should have no planks after trade.");
+        Assert.AreEqual(2, warehouse.Stock.GetCount(3), "Stock should have 2 iron after trade.");
+        // test 3: Insufficient assets for trade factor (3 assets with 4:1 factor should fail to create new asset but still work with 0 output)
+        warehouse.Stock.Clear();
+        var ironAssets = TestUtils.CreateAssets(3, 3, position, ownerId);
+        warehouse.Stock.AddRange(ironAssets);
+        manager.ProcessFactories();
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, ironAssets, 4, tradeFactor: 4);
+        Assert.IsFalse(success, "Trade should fail when not enough assets to create at least 1 new asset.");
+        Assert.AreEqual(3, warehouse.Stock.Assets.Count, "Stock should remain unchanged after failed trade.");
+        // test 4: Trade with non-existent assets should fail
+        warehouse.Stock.Clear();
+        var fakeAssets = TestUtils.CreateAssets(5, 2, position, ownerId);
+        manager.ProcessFactories();
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, fakeAssets, 6, tradeFactor: 1);
+        Assert.IsFalse(success, "Trade should fail when assets don't exist in stock.");
+        Assert.AreEqual(0, warehouse.Stock.Assets.Count, "Stock should remain empty after failed trade.");
+        // test 5: Trade with unavailable assets should fail
+        warehouse.Stock.Clear();
+        var unavailableAssets = new List<Asset>
+        {
+            new Asset(Guid.NewGuid(), position, 1, ownerId, turnsUntilAvailable: 3, isAvailable: false),
+            new Asset(Guid.NewGuid(), position, 1, ownerId, turnsUntilAvailable: 2, isAvailable: false)
+        };
+        warehouse.Stock.AddRange(unavailableAssets);
+        manager.ProcessFactories();
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, unavailableAssets, 2, tradeFactor: 1);
+        Assert.IsFalse(success, "Trade should fail when assets are not available.");
+        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should remain unchanged.");
+        Assert.AreEqual(2, warehouse.Stock.GetCount(1), "All original assets should still be in stock.");
+        // test 6: Trade with null parameters should fail
+        warehouse.Stock.Clear();
+        success = manager.TradeAssetsForOtherAssets(null!, new List<Asset>(), 1);
+        Assert.IsFalse(success, "Trade should fail with null stock.");
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, null!, 1);
+        Assert.IsFalse(success, "Trade should fail with null asset list.");
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, new List<Asset>(), 1);
+        Assert.IsFalse(success, "Trade should fail with empty asset list.");
+        // test 7: Trade with invalid trade factor should fail
+        warehouse.Stock.Clear();
+        var testAssets = TestUtils.CreateAssets(1, 2, position, ownerId);
+        warehouse.Stock.AddRange(testAssets);
+        manager.ProcessFactories();
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, testAssets, 2, tradeFactor: 0);
+        Assert.IsFalse(success, "Trade should fail with zero trade factor.");
+        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should remain unchanged.");
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, testAssets, 2, tradeFactor: -1);
+        Assert.IsFalse(success, "Trade should fail with negative trade factor.");
+        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should remain unchanged.");
+        // test 8: Trade respects stock limit
+        warehouse.Stock.Clear();
+        var manager2 = new EconomyManager(TestUtils.GenerateFactoryTypes());
+        success = manager2.CreateWarehouse(new CubeCoordinates(1, 0, -1), ownerId, 5); // Small stock limit
+        var smallWarehouse = manager2.GetWarehouseByPosition(new CubeCoordinates(1, 0, -1));
+        Assert.IsNotNull(smallWarehouse, "Small warehouse should exist.");
+        var manyAssets = TestUtils.CreateAssets(1, 4, new CubeCoordinates(1, 0, -1), ownerId);
+        smallWarehouse.Stock.AddRange(manyAssets);
+        manager2.ProcessFactories();
+        // try to trade 4 assets (2:1) which would create 2 new assets, but stock only has room for 1 more
+        success = manager2.TradeAssetsForOtherAssets(smallWarehouse.Stock, manyAssets.Take(2).ToList(), 2, tradeFactor: 1);
+        Assert.IsTrue(success, "Trade should succeed when within stock limit.");
+        Assert.AreEqual(4, smallWarehouse.Stock.Assets.Count, "Stock should have correct count.");
+        // now stock is at 4/5, try to trade remaining 2 for 2 other
+        var remainingAssets = smallWarehouse.Stock.Assets.Where(a => a.Type == 1).ToList();
+        success = manager2.TradeAssetsForOtherAssets(smallWarehouse.Stock, remainingAssets, 3, tradeFactor: 1);
+        Assert.IsTrue(success, "Trade should succeed when within stock limit.");
+        Assert.AreEqual(4, smallWarehouse.Stock.Assets.Count, "Stock should have correct count.");
+        // test 9: Large trade factor (10:1)
+        warehouse.Stock.Clear();
+        var bulkAssets = TestUtils.CreateAssets(1, 20, position, ownerId);
+        warehouse.Stock.AddRange(bulkAssets);
+        manager.ProcessFactories();
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, bulkAssets, 2, tradeFactor: 10);
+        Assert.IsTrue(success, "Trade should succeed with 10:1 ratio.");
+        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should have 2 assets after 10:1 trade.");
+        Assert.AreEqual(0, warehouse.Stock.GetCount(1), "Stock should have no original assets.");
+        Assert.AreEqual(2, warehouse.Stock.GetCount(2), "Stock should have 2 new assets.");
+        // test 10: Partial trade (5 assets with 2:1 should create 2 new assets, 1 asset remainder is lost)
+        warehouse.Stock.Clear();
+        var partialAssets = TestUtils.CreateAssets(1, 5, position, ownerId);
+        warehouse.Stock.AddRange(partialAssets);
+        manager.ProcessFactories();
+        success = manager.TradeAssetsForOtherAssets(warehouse.Stock, partialAssets, 2, tradeFactor: 2);
+        Assert.IsTrue(success, "Trade should succeed even with remainder.");
+        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should have 2 new assets (5/2 = 2).");
+        Assert.AreEqual(2, warehouse.Stock.GetCount(2), "All new assets should be of the traded type.");
+    }
 }
