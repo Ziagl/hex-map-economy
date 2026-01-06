@@ -209,7 +209,7 @@ public sealed class EconomyManagerSerializationTests
         }
 
         Assert.AreEqual(stock.StockLimit, clone.StockLimit);
-        Assert.AreEqual(stock.Assets.Count, clone.Assets.Count);
+        Assert.HasCount(stock.Assets.Count, clone.Assets);
         foreach (var a in stock.Assets)
         {
             Assert.IsTrue(clone.Assets.Any(c => c.Id == a.Id &&
@@ -249,7 +249,7 @@ public sealed class EconomyManagerSerializationTests
         }
 
         Assert.AreEqual(stock.StockLimit, clone.StockLimit);
-        Assert.AreEqual(stock.Assets.Count, clone.Assets.Count);
+        Assert.HasCount(stock.Assets.Count, clone.Assets);
         foreach (var a in stock.Assets)
             Assert.IsTrue(clone.Assets.Any(c => c.Id == a.Id));
     }
@@ -357,8 +357,8 @@ public sealed class EconomyManagerSerializationTests
         Assert.AreEqual(warehouse.OwnerId, clone.OwnerId);
         Assert.AreEqual(warehouse.Position, clone.Position);
         Assert.AreEqual(warehouse.StockLimit, clone.StockLimit);
-        Assert.AreEqual(warehouse.Stock.Assets.Count, clone.Stock.Assets.Count);
-        Assert.AreEqual(warehouse.Demands.Count, clone.Demands.Count);
+        Assert.HasCount(warehouse.Stock.Assets.Count, clone.Stock.Assets);
+        Assert.HasCount(warehouse.Demands.Count, clone.Demands);
         if (warehouse.Demands.Count > 0)
         {
             Assert.AreEqual(warehouse.Demands[0].Ingredient.Type, clone.Demands[0].Ingredient.Type);
@@ -404,8 +404,8 @@ public sealed class EconomyManagerSerializationTests
         Assert.AreEqual(warehouse.OwnerId, clone.OwnerId);
         Assert.AreEqual(warehouse.Position, clone.Position);
         Assert.AreEqual(warehouse.StockLimit, clone.StockLimit);
-        Assert.AreEqual(warehouse.Stock.Assets.Count, clone.Stock.Assets.Count);
-        Assert.AreEqual(warehouse.Demands.Count, clone.Demands.Count);
+        Assert.HasCount(warehouse.Stock.Assets.Count, clone.Stock.Assets);
+        Assert.HasCount(warehouse.Demands.Count, clone.Demands);
     }
 
     // ---------------- Demand ----------------
@@ -469,7 +469,7 @@ public sealed class EconomyManagerSerializationTests
 
     private static void AssertIngredientsEqual(List<RecipeIngredient> a, List<RecipeIngredient> b)
     {
-        Assert.AreEqual(a.Count, b.Count, "Ingredient count mismatch");
+        Assert.HasCount(a.Count, b, "Ingredient count mismatch");
         var normA = a.OrderBy(i => i.Type).ThenBy(i => i.Amount).Select(i => (i.Type, i.Amount)).ToList();
         var normB = b.OrderBy(i => i.Type).ThenBy(i => i.Amount).Select(i => (i.Type, i.Amount)).ToList();
         CollectionAssert.AreEqual(normA, normB, "Ingredient list mismatch");
@@ -534,7 +534,7 @@ public sealed class EconomyManagerSerializationTests
 
         static void AssertRecipesEqual(Dictionary<int, Recipe> a, Dictionary<int, Recipe> b)
         {
-            Assert.AreEqual(a.Count, b.Count, "Recipe count mismatch");
+            Assert.HasCount(a.Count, b, "Recipe count mismatch");
             foreach (var (key, ra) in a)
             {
                 Assert.IsTrue(b.ContainsKey(key), $"Recipe key {key} missing in actual");
@@ -640,10 +640,10 @@ public sealed class EconomyManagerSerializationTests
                 return;
             }
 
-            Assert.AreEqual(dictA.Count, dictB.Count, $"{ctx} Stock item count mismatch");
+            Assert.HasCount(dictA.Count, dictB, $"{ctx} Stock item count mismatch");
             foreach (DictionaryEntry entry in dictA)
             {
-                Assert.IsTrue(dictB.Contains(entry.Key), $"{ctx} Stock missing key {entry.Key}");
+                Assert.Contains(entry.Key, dictB, $"{ctx} Stock missing key {entry.Key}");
                 Assert.AreEqual(entry.Value, dictB[entry.Key], $"{ctx} Stock amount mismatch for key {entry.Key}");
             }
         }
@@ -659,7 +659,7 @@ public sealed class EconomyManagerSerializationTests
             {
                 var listA = ea.Cast<object>().ToList();
                 var listB = eb.Cast<object>().ToList();
-                Assert.AreEqual(listA.Count, listB.Count, $"{ctx} Demand count mismatch");
+                Assert.HasCount(listA.Count, listB, $"{ctx} Demand count mismatch");
                 // If Demand exposes Ingredient or Type/Amount we can try to compare shallowly
                 for (int i = 0; i < listA.Count; i++)
                 {
@@ -744,7 +744,7 @@ public sealed class EconomyManagerSerializationTests
         // ---- Compare Warehouses ----
         var warehousesExpected = GetField<Dictionary<Guid, Warehouse>>(expected, "_warehouseStore");
         var warehousesActual = GetField<Dictionary<Guid, Warehouse>>(actual, "_warehouseStore");
-        Assert.AreEqual(warehousesExpected.Count, warehousesActual.Count, "Warehouse count mismatch");
+        Assert.HasCount(warehousesExpected.Count, warehousesActual, "Warehouse count mismatch");
         foreach (var (id, whExp) in warehousesExpected)
         {
             Assert.IsTrue(warehousesActual.ContainsKey(id), $"Warehouse {id} missing in actual");
@@ -755,7 +755,7 @@ public sealed class EconomyManagerSerializationTests
         // ---- Compare Factories ----
         var factoriesExpected = GetField<Dictionary<Guid, Factory>>(expected, "_factoryStore");
         var factoriesActual = GetField<Dictionary<Guid, Factory>>(actual, "_factoryStore");
-        Assert.AreEqual(factoriesExpected.Count, factoriesActual.Count, "Factory count mismatch");
+        Assert.HasCount(factoriesExpected.Count, factoriesActual, "Factory count mismatch");
         foreach (var (id, fExp) in factoriesExpected)
         {
             Assert.IsTrue(factoriesActual.ContainsKey(id), $"Factory {id} missing in actual");

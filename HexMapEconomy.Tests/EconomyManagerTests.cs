@@ -30,7 +30,7 @@ public sealed class EconomyManagerTests
         Assert.IsFalse(success, "Factory should not be created with an unknown type.");
         Assert.AreEqual(1, manager.CountFactories(), "Exactly one Factory should be in store.");
         var factories = manager.GetFactoriesByPosition(position);
-        Assert.AreEqual(1, factories.Count, "There should be one factory at the specified position.");
+        Assert.HasCount(1, factories, "There should be one factory at the specified position.");
         success = manager.ChangeFactoryOwner(factories.First().Id, 456);
         Assert.IsTrue(success, "Factory owner should be changed successfully.");
         Assert.AreEqual(456, factories.First().OwnerId, "Factory owner ID should be updated.");
@@ -101,9 +101,9 @@ public sealed class EconomyManagerTests
         Assert.AreEqual(1, added, "Factory should accept mixed stock.");
         manager.ProcessFactories(); // process factory to make assets available
         var entries = manager.GetWarehouseById(factory.WarehouseId).Stock.Take(3, 2);
-        Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries that do not exist.");
+        Assert.IsEmpty(entries, "Factory should not take stock entries that do not exist.");
         entries =  manager.GetWarehouseById(factory.WarehouseId).Stock.Take(2, 4);
-        Assert.IsTrue(entries.Count == 0, "Factory should not take stock entries if the requested amount is not available.");
+        Assert.IsEmpty(entries, "Factory should not take stock entries if the requested amount is not available.");
         entries = manager.GetWarehouseById(factory.WarehouseId).Stock.Take(1, 2); // only get 2, because ProcessFactories also consumes one of 3 in store!
         Assert.IsTrue(entries.Count == 2 && entries.All(x => x.Type == 1), "Factory should take stock entries that exist and have enough amount.");
     }
@@ -134,12 +134,12 @@ public sealed class EconomyManagerTests
         // compute 1 turn
         // generator creates 1 wood and puts it into stock of warehouse
         manager.ProcessFactories();
-        Assert.AreEqual(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Count, "Factory should have 1 wood in stock after processing.");
+        Assert.HasCount(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets, "Factory should have 1 wood in stock after processing.");
         manager.ProcessFactories();
-        Assert.AreEqual(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 1).ToList().Count, "Factory should have 1 new wood in stock after second processing.");
-        Assert.AreEqual(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 2).ToList().Count, "Factory should have 1 new plank in stock after second processing.");
+        Assert.HasCount(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 1).ToList(), "Factory should have 1 new wood in stock after second processing.");
+        Assert.HasCount(1, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 2).ToList(), "Factory should have 1 new plank in stock after second processing.");
         manager.ProcessFactories();
-        Assert.AreEqual(2, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 2).ToList().Count, "Factory should have 2 planks in output stock after third processing.");
+        Assert.HasCount(2, manager.GetWarehouseById(factory.WarehouseId).Stock.Assets.Where(a => a.Type == 2).ToList(), "Factory should have 2 planks in output stock after third processing.");
     }
 
     [TestMethod]
@@ -171,12 +171,12 @@ public sealed class EconomyManagerTests
         var factory = manager.GetFactoriesByPosition(position).First();
         // transportation tests
         manager.ProcessFactories(); // process factories to generate assets
-        Assert.AreEqual(0, warehouse1.Stock.Assets.Count, "Stock of Warehouse 1 should be empty.");
-        Assert.AreEqual(1, warehouse2.Stock.Assets.Count, "Stock of Warehouse 2 should not be empty.");
+        Assert.IsEmpty(warehouse1.Stock.Assets, "Stock of Warehouse 1 should be empty.");
+        Assert.HasCount(1, warehouse2.Stock.Assets, "Stock of Warehouse 2 should not be empty.");
         Assert.AreEqual(1, warehouse2.Stock.Assets.First().Type, "Asset has to be of type 1.");
         manager.ProcessFactories(); // process factories to generate assets
-        Assert.AreEqual(0, warehouse1.Stock.Assets.Count, "Stock of Warehouse 1 should be empty.");
-        Assert.AreEqual(2, warehouse2.Stock.Assets.Count, "Stock of Warehouse 2 should not be empty.");
+        Assert.IsEmpty(warehouse1.Stock.Assets, "Stock of Warehouse 1 should be empty.");
+        Assert.HasCount(2, warehouse2.Stock.Assets, "Stock of Warehouse 2 should not be empty.");
     }
 
     [TestMethod]
@@ -205,18 +205,18 @@ public sealed class EconomyManagerTests
         warehouse3.Stock.AddRange(TestUtils.CreateAssets(1, 1, position3, ownerId));
         // test delivery time estimation
         var availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 } }, ownerId, position1);
-        Assert.IsTrue(0 == availability.Turns, "Delivery time for 1 asset should be 0 turns.");
-        Assert.IsTrue(0 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
+        Assert.AreEqual(0, availability.Turns, "Delivery time for 1 asset should be 0 turns.");
+        Assert.AreEqual(0, availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
         availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 2 } }, ownerId, position1);
-        Assert.IsTrue(1 == availability.Turns, "Delivery time for 1 asset should be 1 turn.");
-        Assert.IsTrue(1 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 1 turn.");
+        Assert.AreEqual(1, availability.Turns, "Delivery time for 1 asset should be 1 turn.");
+        Assert.AreEqual(1, availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 1 turn.");
         availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 3 } }, ownerId, position1);
-        Assert.IsTrue(2 == availability.Turns, "Delivery time for 1 asset should be 2 turns.");
-        Assert.IsTrue(2 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 2 turns.");
+        Assert.AreEqual(2, availability.Turns, "Delivery time for 1 asset should be 2 turns.");
+        Assert.AreEqual(2, availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 2 turns.");
         availability = manager.EstimateDeliveryTime(new List<RecipeIngredient>() { new RecipeIngredient() { Type = 1, Amount = 1 }, new RecipeIngredient() { Type = 2, Amount = 1 } }, ownerId, position1);
-        Assert.IsTrue(-1 == availability.Turns, "Delivery time for 1 asset should be -1 turns, because it is not available.");
-        Assert.IsTrue(0 == availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
-        Assert.IsTrue(-1 == availability.AvailabilityDetails[1].Turns, "Delivery time for second asset should be -1 turns, because it is not available.");
+        Assert.AreEqual(-1, availability.Turns, "Delivery time for 1 asset should be -1 turns, because it is not available.");
+        Assert.AreEqual(0, availability.AvailabilityDetails[0].Turns, "Delivery time for first asset should be 0 turns.");
+        Assert.AreEqual(-1, availability.AvailabilityDetails[1].Turns, "Delivery time for second asset should be -1 turns, because it is not available.");
     }
 
     [TestMethod]
@@ -234,10 +234,10 @@ public sealed class EconomyManagerTests
         var woodAssets = TestUtils.CreateAssets(1, 3, position, ownerId);
         warehouse.Stock.AddRange(woodAssets);
         manager.ProcessFactories();
-        Assert.AreEqual(3, warehouse.Stock.Assets.Count, "Stock should have 3 wood assets.");
+        Assert.HasCount(3, warehouse.Stock.Assets, "Stock should have 3 wood assets.");
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, woodAssets, 2, tradeFactor: 1);
         Assert.IsTrue(success, "Trade should succeed with 1:1 ratio.");
-        Assert.AreEqual(3, warehouse.Stock.Assets.Count, "Stock should still have 3 assets after trade.");
+        Assert.HasCount(3, warehouse.Stock.Assets, "Stock should still have 3 assets after trade.");
         Assert.AreEqual(0, warehouse.Stock.GetCount(1), "Stock should have no wood after trade.");
         Assert.AreEqual(3, warehouse.Stock.GetCount(2), "Stock should have 3 planks after trade.");
         // test 2: 2:1 trade (4 planks -> 2 iron)
@@ -247,7 +247,7 @@ public sealed class EconomyManagerTests
         manager.ProcessFactories();
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, plankAssets, 3, tradeFactor: 2);
         Assert.IsTrue(success, "Trade should succeed with 2:1 ratio.");
-        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should have 2 assets after 2:1 trade.");
+        Assert.HasCount(2, warehouse.Stock.Assets, "Stock should have 2 assets after 2:1 trade.");
         Assert.AreEqual(0, warehouse.Stock.GetCount(2), "Stock should have no planks after trade.");
         Assert.AreEqual(2, warehouse.Stock.GetCount(3), "Stock should have 2 iron after trade.");
         // test 3: Insufficient assets for trade factor (3 assets with 4:1 factor should fail to create new asset but still work with 0 output)
@@ -257,14 +257,14 @@ public sealed class EconomyManagerTests
         manager.ProcessFactories();
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, ironAssets, 4, tradeFactor: 4);
         Assert.IsFalse(success, "Trade should fail when not enough assets to create at least 1 new asset.");
-        Assert.AreEqual(3, warehouse.Stock.Assets.Count, "Stock should remain unchanged after failed trade.");
+        Assert.HasCount(3, warehouse.Stock.Assets, "Stock should remain unchanged after failed trade.");
         // test 4: Trade with non-existent assets should fail
         warehouse.Stock.Clear();
         var fakeAssets = TestUtils.CreateAssets(5, 2, position, ownerId);
         manager.ProcessFactories();
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, fakeAssets, 6, tradeFactor: 1);
         Assert.IsFalse(success, "Trade should fail when assets don't exist in stock.");
-        Assert.AreEqual(0, warehouse.Stock.Assets.Count, "Stock should remain empty after failed trade.");
+        Assert.HasCount(0, warehouse.Stock.Assets, "Stock should remain empty after failed trade.");
         // test 5: Trade with unavailable assets should fail
         warehouse.Stock.Clear();
         var unavailableAssets = new List<Asset>
@@ -276,7 +276,7 @@ public sealed class EconomyManagerTests
         manager.ProcessFactories();
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, unavailableAssets, 2, tradeFactor: 1);
         Assert.IsFalse(success, "Trade should fail when assets are not available.");
-        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should remain unchanged.");
+        Assert.HasCount(2, warehouse.Stock.Assets, "Stock should remain unchanged.");
         Assert.AreEqual(2, warehouse.Stock.GetCount(1), "All original assets should still be in stock.");
         // test 6: Trade with null parameters should fail
         warehouse.Stock.Clear();
@@ -293,10 +293,10 @@ public sealed class EconomyManagerTests
         manager.ProcessFactories();
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, testAssets, 2, tradeFactor: 0);
         Assert.IsFalse(success, "Trade should fail with zero trade factor.");
-        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should remain unchanged.");
+        Assert.HasCount(2, warehouse.Stock.Assets, "Stock should remain unchanged.");
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, testAssets, 2, tradeFactor: -1);
         Assert.IsFalse(success, "Trade should fail with negative trade factor.");
-        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should remain unchanged.");
+        Assert.HasCount(2, warehouse.Stock.Assets, "Stock should remain unchanged.");
         // test 8: Trade respects stock limit
         warehouse.Stock.Clear();
         var manager2 = new EconomyManager(TestUtils.GenerateFactoryTypes());
@@ -309,12 +309,12 @@ public sealed class EconomyManagerTests
         // try to trade 4 assets (2:1) which would create 2 new assets, but stock only has room for 1 more
         success = manager2.TradeAssetsForOtherAssets(smallWarehouse.Stock, manyAssets.Take(2).ToList(), 2, tradeFactor: 1);
         Assert.IsTrue(success, "Trade should succeed when within stock limit.");
-        Assert.AreEqual(4, smallWarehouse.Stock.Assets.Count, "Stock should have correct count.");
+        Assert.HasCount(4, smallWarehouse.Stock.Assets, "Stock should have correct count.");
         // now stock is at 4/5, try to trade remaining 2 for 2 other
         var remainingAssets = smallWarehouse.Stock.Assets.Where(a => a.Type == 1).ToList();
         success = manager2.TradeAssetsForOtherAssets(smallWarehouse.Stock, remainingAssets, 3, tradeFactor: 1);
         Assert.IsTrue(success, "Trade should succeed when within stock limit.");
-        Assert.AreEqual(4, smallWarehouse.Stock.Assets.Count, "Stock should have correct count.");
+        Assert.HasCount(4, smallWarehouse.Stock.Assets, "Stock should have correct count.");
         // test 9: Large trade factor (10:1)
         warehouse.Stock.Clear();
         var bulkAssets = TestUtils.CreateAssets(1, 20, position, ownerId);
@@ -322,7 +322,7 @@ public sealed class EconomyManagerTests
         manager.ProcessFactories();
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, bulkAssets, 2, tradeFactor: 10);
         Assert.IsTrue(success, "Trade should succeed with 10:1 ratio.");
-        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should have 2 assets after 10:1 trade.");
+        Assert.HasCount(2, warehouse.Stock.Assets, "Stock should have 2 assets after 10:1 trade.");
         Assert.AreEqual(0, warehouse.Stock.GetCount(1), "Stock should have no original assets.");
         Assert.AreEqual(2, warehouse.Stock.GetCount(2), "Stock should have 2 new assets.");
         // test 10: Partial trade (5 assets with 2:1 should create 2 new assets, 1 asset remainder is lost)
@@ -332,7 +332,7 @@ public sealed class EconomyManagerTests
         manager.ProcessFactories();
         success = manager.TradeAssetsForOtherAssets(warehouse.Stock, partialAssets, 2, tradeFactor: 2);
         Assert.IsTrue(success, "Trade should succeed even with remainder.");
-        Assert.AreEqual(2, warehouse.Stock.Assets.Count, "Stock should have 2 new assets (5/2 = 2).");
+        Assert.HasCount(2, warehouse.Stock.Assets, "Stock should have 2 new assets (5/2 = 2).");
         Assert.AreEqual(2, warehouse.Stock.GetCount(2), "All new assets should be of the traded type.");
     }
 }
